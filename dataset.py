@@ -29,12 +29,12 @@ class Image_Dataset(Dataset):
             image_norm = cv2.cvtColor(cv2.resize(image, (64, 64)), cv2.COLOR_RGB2GRAY)
             image_norm = image_norm.astype(np.float32) / 255.0
             
-            image_norm_tensor = torch.tensor(image_norm).unsqueeze(0)
+            image_norm_tensor = torch.tensor(image_norm).unsqueeze(0).unsqueeze(0)  # (1, C, H, W)
 
-            patches = image_norm_tensor.unfold(1, patch_size, patch_size).unfold(2, patch_size, patch_size) # [C, patch_row, patch_col, patch_h, patch_w]
-            patches = patches.permute(1, 2, 0, 3, 4)                                                        # [patch_row, patch_col, C, patch_h, patch_w]
-            patch_row, patch_col, C, patch_h, patch_w = patches.shape
-            patches = patches.contiguous().view(patch_row * patch_col , C * patch_h * patch_w)              # [num_patches, patch_dim]
+            patches = image_norm_tensor.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size) # [1, C, patch_row, patch_col, patch_h, patch_w]
+            patches = patches.permute(0, 2, 3, 1, 4, 5)                                                     # [1, patch_row, patch_col, C, patch_h, patch_w]
+            _, patch_row, patch_col, C, patch_h, patch_w = patches.shape
+            patches = patches.contiguous().view(patch_row * patch_col, C * patch_h * patch_w)               # [num_patches, patch_dim]
 
             self.images_list.append(image_norm)
             self.patches_list.append(patches)
