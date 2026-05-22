@@ -18,6 +18,12 @@ class CFD_Dataset(Dataset):
         self.re_list      = []
         self.text_list    = []
         self.patches_list = []
+
+        self.u_mean_list = []
+        self.u_std_list  = []
+        self.v_mean_list = []
+        self.v_std_list  = []
+
         
         files = os.listdir(root)
 
@@ -52,28 +58,35 @@ class CFD_Dataset(Dataset):
 
             # stack into (C, H, W) with C=2 (u and v channels)
             uv_grid = np.stack([u_grid, v_grid], axis=0).astype(np.float32)  # (2, 64, 64)
-            # normalize each channel independently
-            for c in range(2):
-                ch = uv_grid[c]
-                uv_grid[c] = (ch - ch.mean()) / (ch.std() + 1e-8)
-            uv_tensor = torch.tensor(uv_grid)  # (2, 64, 64)
 
-            
-            # extract patches
-            patches = uv_tensor.unsqueeze(0)  # (1, 2, 64, 64)
-            patches = patches.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)
-            # (1, C, patch_row, patch_col, patch_h, patch_w)
-            patches = patches.permute(0, 2, 3, 1, 4, 5)
-            # (1, patch_row, patch_col, C, patch_h, patch_w)
-            _, pr, pc, C, ph, pw = patches.shape
-            patches = patches.contiguous().view(pr * pc, C * ph * pw)
-            # (num_patches, patch_dim)
+            self.u_mean_list.append(uv_grid[0].mean())
+            self.u_std_list.append(uv_grid[0].std())
+            self.v_mean_list.append(uv_grid[1].mean())
+            self.v_std_list.append(uv_grid[1].std())
 
             self.re_list.append(re_value)
             self.patches_list.append(patches)
         
         self.re_mean = np.mean(self.re_list)
         self.re_std  = np.std(self.re_list)
+
+        self.u_mean = np.mean(self.u_mean_list)
+        self.u_std  = np.mean(self.u_std_list)
+        self.v_mean = np.mean(self.v_mean_list)
+        self.v_std  = np.mean(self.v_std_list)
+
+        for i, uv_grid in enumerate(self.patches_list):
+            uv_grid[0] = (uv_grid[0] - self.u_mean) / (self.u_std + 1e-8)
+            uv_grid[1] = (uv_grid[1] - self.v_mean) / (self.v_std + 1e-8)
+
+            uv_tensor = torch.tensor(uv_grid)
+            patches = uv_tensor.unsqueeze(0)
+            patches = patches.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)
+            patches = patches.permute(0, 2, 3, 1, 4, 5)
+            _, pr, pc, C, ph, pw = patches.shape
+            patches = patches.contiguous().view(pr * pc, C * ph * pw)
+            self.patches_list[i] = patches
+
 
     def __len__(self): return len(self.re_list)
     

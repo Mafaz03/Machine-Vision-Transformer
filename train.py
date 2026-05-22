@@ -8,7 +8,7 @@ from model import Transformer, make_src_mask, make_tgt_mask
 
 from tqdm import tqdm
 
-from dataset import *
+from dataset_cfd import *
 from lr_scheduler import *
 
 import wandb
@@ -30,7 +30,7 @@ def run_epoch(
     for _ in range(epoch_num):
         total_loss = 0
 
-        for src, _, tgt in tqdm(data_iter):
+        for src, tgt in tqdm(data_iter):
 
             src = src.to(device)
             tgt = tgt.to(device)
@@ -186,7 +186,7 @@ def run_training_experiment() -> None:
 
     config = {
         "patch_size"       : 8,
-        "patch_dim"        : 8 * 8 * 1,
+        "patch_dim"        : 8 * 8 * 2,
         "d_model"          : 256,
         "N"                : 8,
         "num_heads"        : 8,
@@ -194,7 +194,7 @@ def run_training_experiment() -> None:
         "dropout"          : 0.1,
         "train_batch_size" : 20,
         "test_batch_size"  : 10,
-        "epochs"           : 1000,
+        "epochs"           : 100,
         "device"           : 'cuda' if torch.cuda.is_available() else 'cpu',
         'save_every'       : 4
     }
@@ -203,18 +203,20 @@ def run_training_experiment() -> None:
     # 3. Create DataLoaders for train / val 
 
 
-    image_dataset = Image_Dataset(
-        root="Data_Re",
-        patch_size=config["patch_size"]
+    cfd_dataset = CFD_Dataset(
+        root="Data",
+        patch_size=config["patch_size"], 
+        grid_size = 64
+
     )
 
     # split sizes
-    train_size = int(0.8 * len(image_dataset))
-    test_size  = len(image_dataset) - train_size
+    train_size = int(0.8 * len(cfd_dataset))
+    test_size  = len(cfd_dataset) - train_size
 
     # random split
     train_dataset, test_dataset = torch.utils.data.random_split(
-        image_dataset,
+        cfd_dataset,
         [train_size, test_size]
     )
 
