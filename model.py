@@ -30,7 +30,7 @@ def scaled_dot_product_attention(
     # scores = torch.matmul(Q, KT)# / math.sqrt(d_k)          # (B, H, seq_q, seq_k)
     
     if mask is not None: 
-        scores = scores.masked_fill(mask, float('-inf')).to(scores.device)
+        scores = scores.masked_fill(mask.to(scores.device), float('-inf'))
 
     attn_weights = torch.softmax(scores, dim=-1)            # (B, H, seq_q, seq_k)
     if dropout is not None:
