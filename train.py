@@ -150,7 +150,7 @@ def run_training_experiment() -> None:
         "num_heads"        : 8,
         "d_ff"             : 1024,
         "dropout"          : 0.1,
-        "train_batch_size" : 20,
+        "train_batch_size" : 3,
         "test_batch_size"  : 10,
         "epochs"           : 100,
         "device"           : 'cuda' if torch.cuda.is_available() else 'cpu',
