@@ -5,5 +5,4 @@
 __pycache__/*
 *.pyc
 wandb
-Data
 Data_Re
