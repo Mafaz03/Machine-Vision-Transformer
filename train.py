@@ -95,49 +95,6 @@ def greedy_decode(model, src, src_mask, max_len, patch_dim, device = "cpu"):
     return ys[:, 1:, :]
 
 
-def patches_to_image(
-    patches,
-    image_size=64,
-    patch_size=16,
-    channels=1
-):
-
-    """
-    patches:
-        (B, num_patches, patch_dim)
-
-    returns:
-        (B, C, H, W)
-    """
-
-    B, num_patches, patch_dim = patches.shape
-
-    patches_per_side = image_size // patch_size
-
-    # reshape patch vectors
-    patches = patches.view(
-        B,
-        patches_per_side,
-        patches_per_side,
-        channels,
-        patch_size,
-        patch_size
-    )
-
-    # rearrange axes
-    patches = patches.permute(0, 3, 1, 4, 2, 5)
-
-    # combine patches
-    image = patches.contiguous().view(
-        B,
-        channels,
-        image_size,
-        image_size
-    )
-
-    return image
-
-
 def save_checkpoint(
     model: Transformer,
     optimizer: torch.optim.Optimizer,
@@ -185,8 +142,9 @@ def load_checkpoint(
 def run_training_experiment() -> None:
 
     config = {
-        "patch_size"       : 8,
-        "patch_dim"        : 8 * 8 * 2,
+        "grid_size"        : 128,
+        "patch_size"       : 4,
+        "patch_dim"        : 4 * 4 * 2,
         "d_model"          : 256,
         "N"                : 8,
         "num_heads"        : 8,
@@ -206,7 +164,7 @@ def run_training_experiment() -> None:
     cfd_dataset = CFD_Dataset(
         root="Data",
         patch_size=config["patch_size"], 
-        grid_size = 64
+        grid_size = config["grid_size"]
 
     )
 
@@ -243,7 +201,7 @@ def run_training_experiment() -> None:
                               N              = config["N"], 
                               num_heads      = config["num_heads"], 
                               d_ff           = config["d_ff"], 
-                              patch_dim = config['patch_dim'])
+                              patch_dim      = config['patch_dim'])
     
     transformer = transformer.to(config["device"])
 

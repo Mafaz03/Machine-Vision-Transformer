@@ -65,11 +65,10 @@ class CFD_Dataset(Dataset):
             self.v_std_list.append(uv_grid[1].std())
 
             self.re_list.append(re_value)
-            self.patches_list.append(patches)
+            self.patches_list.append(uv_grid)
         
         self.re_mean = np.mean(self.re_list)
         self.re_std  = np.std(self.re_list)
-
         self.u_mean = np.mean(self.u_mean_list)
         self.u_std  = np.mean(self.u_std_list)
         self.v_mean = np.mean(self.v_mean_list)
