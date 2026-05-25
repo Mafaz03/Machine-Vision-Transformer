@@ -139,23 +139,76 @@ def load_checkpoint(
 
     return checkpoint["epoch"]
 
-class CFDLoss(nn.Module):
-    def __init__(self, grad_weight=0.1):
-        super().__init__()
-        self.mse = nn.MSELoss()
-        self.grad_weight = grad_weight
+# class CFDLoss(nn.Module):
+#     def __init__(self, grad_weight=0.1):
+#         super().__init__()
+#         self.mse = nn.MSELoss()
+#         self.grad_weight = grad_weight
 
-    def gradient_loss(self, pred, target):
-        # pred, target: (B, seq, patch_dim)
-        pred_grad   = torch.diff(pred,   dim=1)
-        target_grad = torch.diff(target, dim=1)
-        return self.mse(pred_grad, target_grad)
+#     def gradient_loss(self, pred, target):
+#         # pred, target: (B, seq, patch_dim)
+#         pred_grad   = torch.diff(pred,   dim=1)
+#         target_grad = torch.diff(target, dim=1)
+#         return self.mse(pred_grad, target_grad)
+
+#     def forward(self, pred, target):
+#         mse_loss  = self.mse(pred, target)
+#         grad_loss = self.gradient_loss(pred, target)
+#         return mse_loss + self.grad_weight * grad_loss
+        
+class CFDLoss(nn.Module):
+    def __init__(self, grad_weight=0.1, div_weight=0.1, patch_size=8, grid_size=64, channels=2):
+        super().__init__()
+        self.mse         = nn.MSELoss()
+        self.grad_weight = grad_weight
+        self.div_weight  = div_weight
+        self.patch_size  = patch_size
+        self.grid_size   = grid_size
+        self.channels    = channels
+
+    def patches_to_field(self, patches):
+        # patches: (B, num_patches, patch_dim) -> (B, C, H, W)
+        B = patches.shape[0]
+        p = self.grid_size // self.patch_size
+        patches = patches.view(B, p, p, self.channels, self.patch_size, self.patch_size)
+        patches = patches.permute(0, 3, 1, 4, 2, 5).contiguous()
+        return patches.view(B, self.channels, self.grid_size, self.grid_size)
+
+    def spatial_gradient_loss(self, pred, target):
+        # pred, target: (B, C, H, W)
+        # x gradients
+        pred_dx   = torch.diff(pred,   dim=3)  # along W
+        target_dx = torch.diff(target, dim=3)
+        # y gradients
+        pred_dy   = torch.diff(pred,   dim=2)  # along H
+        target_dy = torch.diff(target, dim=2)
+
+        return self.mse(pred_dx, target_dx) + self.mse(pred_dy, target_dy)
+
+    def divergence_loss(self, pred):
+        # pred: (B, C, H, W) where C=0 is u, C=1 is v
+        # continuity equation: du/dx + dv/dy = 0
+        du_dx = torch.diff(pred[:, 0, :, :], dim=2)  # (B, H, W-1)
+        dv_dy = torch.diff(pred[:, 1, :, :], dim=1)  # (B, H-1, W)
+
+        # match sizes
+        min_h = min(du_dx.shape[1], dv_dy.shape[1])
+        min_w = min(du_dx.shape[2], dv_dy.shape[2])
+
+        divergence = du_dx[:, :min_h, :min_w] + dv_dy[:, :min_h, :min_w]
+        return divergence.pow(2).mean()  # should be 0 (best case)
 
     def forward(self, pred, target):
-        mse_loss  = self.mse(pred, target)
-        grad_loss = self.gradient_loss(pred, target)
-        return mse_loss + self.grad_weight * grad_loss
-        
+        # reconstruct 2D fields
+        pred_field   = self.patches_to_field(pred)
+        target_field = self.patches_to_field(target)
+
+        mse_loss  = self.mse(pred_field, target_field)
+        grad_loss = self.spatial_gradient_loss(pred_field, target_field)
+        div_loss  = self.divergence_loss(pred_field)  # physics constraint
+
+        return mse_loss + self.grad_weight * grad_loss + self.div_weight * div_loss
+    
 def run_training_experiment() -> None:
 
     # config = {
