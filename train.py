@@ -67,30 +67,31 @@ def run_epoch(
 
 
 def greedy_decode(model, src, src_mask, max_len, patch_dim, device = "cpu"):
-    src = src.to(device)
-    src_mask = src_mask.to(device)
-    
-    B = src.shape[0]
-    # encode
-    ys = torch.zeros(B, 1, patch_dim).to(device)
-    memory = model.encode(src, src_mask)
-
-    # loop
-    for _ in tqdm(range(max_len)):
-        # decoding
-        tgt_mask = make_tgt_mask(ys).to(device)
-        out = model.decode(
-                memory,
-                src_mask,
-                ys,
-                tgt_mask
-            )
+    with torch.no_grad():
+        src = src.to(device)
+        src_mask = src_mask.to(device)
         
-        # newest predicted patch
-        next_patch = out[:, -1:, :]
+        B = src.shape[0]
+        # encode
+        ys = torch.zeros(B, 1, patch_dim).to(device)
+        memory = model.encode(src, src_mask)
 
-        # append
-        ys = torch.cat([ys, next_patch], dim=1)
+        # loop
+        for _ in tqdm(range(max_len)):
+            # decoding
+            tgt_mask = make_tgt_mask(ys).to(device)
+            out = model.decode(
+                    memory,
+                    src_mask,
+                    ys,
+                    tgt_mask
+                )
+            
+            # newest predicted patch
+            next_patch = out[:, -1:, :]
+
+            # append
+            ys = torch.cat([ys, next_patch], dim=1)
 
     return ys[:, 1:, :]
 
