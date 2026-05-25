@@ -199,9 +199,15 @@ class CFDLoss(nn.Module):
         return divergence.pow(2).mean()  # should be 0 (best case)
 
     def forward(self, pred, target):
-        # reconstruct 2D fields
-        pred_field   = self.patches_to_field(pred)
-        target_field = self.patches_to_field(target)
+        B, seq_len, patch_dim = pred.shape
+        p = self.grid_size // self.patch_size  # 16
+        
+        # trim to largest complete square that fits
+        complete = (int(seq_len ** 0.5)) ** 2  # largest perfect square <= seq_len
+        
+        pred_field   = self.patches_to_field(pred[:, :complete, :])
+        target_field = self.patches_to_field(target[:, :complete, :])
+
 
         mse_loss  = self.mse(pred_field, target_field)
         grad_loss = self.spatial_gradient_loss(pred_field, target_field)
@@ -283,7 +289,6 @@ def run_training_experiment() -> None:
 
     # 4. Instantiate Transformer with hyperparameters from config
     transformer = Transformer(
-                            #   src_vocab_size = config["src_vocab_size"], 
                               d_model        = config["d_model"], 
                               N              = config["N"], 
                               num_heads      = config["num_heads"], 
