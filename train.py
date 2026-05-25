@@ -139,19 +139,52 @@ def load_checkpoint(
 
     return checkpoint["epoch"]
 
+class CFDLoss(nn.Module):
+    def __init__(self, grad_weight=0.1):
+        super().__init__()
+        self.mse = nn.MSELoss()
+        self.grad_weight = grad_weight
 
+    def gradient_loss(self, pred, target):
+        # pred, target: (B, seq, patch_dim)
+        pred_grad   = torch.diff(pred,   dim=1)
+        target_grad = torch.diff(target, dim=1)
+        return self.mse(pred_grad, target_grad)
+
+    def forward(self, pred, target):
+        mse_loss  = self.mse(pred, target)
+        grad_loss = self.gradient_loss(pred, target)
+        return mse_loss + self.grad_weight * grad_loss
+        
 def run_training_experiment() -> None:
 
+    # config = {
+    #     "grid_size"        : 64,
+    #     "patch_size"       : 4,
+    #     "patch_dim"        : 4 * 4 * 2,
+    #     "d_model"          : 512,
+    #     "N"                : 10,
+    #     "num_heads"        : 32,
+    #     "d_ff"             : 1024,
+    #     "dropout"          : 0.1,
+    #     "train_batch_size" : 2,
+    #     "test_batch_size"  : 10,
+    #     "epochs"           : 80,
+    #     "device"           : 'cuda' if torch.cuda.is_available() else 'cpu',
+    #     'save_every'       : 4
+    # }
+
+    # small
     config = {
         "grid_size"        : 64,
         "patch_size"       : 4,
         "patch_dim"        : 4 * 4 * 2,
-        "d_model"          : 512,
+        "d_model"          : 64,
         "N"                : 10,
         "num_heads"        : 32,
-        "d_ff"             : 1024,
-        "dropout"          : 0.1,
-        "train_batch_size" : 2,
+        "d_ff"             : 2048,
+        "dropout"          : 0.01,
+        "train_batch_size" : 8,
         "test_batch_size"  : 10,
         "epochs"           : 80,
         "device"           : 'cuda' if torch.cuda.is_available() else 'cpu',
@@ -213,7 +246,10 @@ def run_training_experiment() -> None:
     scheduler = NoamScheduler(optimizer, d_model = config["d_model"], warmup_steps = 5000)
 
     # 7. Instantiate MSE Loss or smthing idk
-    loss_fn = torch.nn.MSELoss()
+    # loss_fn = torch.nn.MSELoss()
+    loss_fn = CFDLoss()
+
+
 
     # 8. Training loop:
     for epoch in range(config['epochs']):
