@@ -76,7 +76,7 @@ def greedy_decode(model, src, src_mask, max_len, patch_dim, device = "cpu"):
     memory = model.encode(src, src_mask)
 
     # loop
-    for _ in range(max_len):
+    for _ in tqdm(range(max_len)):
         # decoding
         tgt_mask = make_tgt_mask(ys).to(device)
         out = model.decode(
@@ -128,7 +128,7 @@ def load_checkpoint(
 ) -> int:
 
     checkpoint = torch.load(path, map_location=device)
-    model.load_state_dict(checkpoint["model_state_dict"])
+    model.load_state_dict(checkpoint["model_state_dict"], weights_only = False)
 
     if optimizer is not None and "optimizer_state_dict" in checkpoint:
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
