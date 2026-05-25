@@ -143,7 +143,7 @@ def load_checkpoint(
 def run_training_experiment() -> None:
 
     config = {
-        "grid_size"        : 128,
+        "grid_size"        : 64,
         "patch_size"       : 4,
         "patch_dim"        : 4 * 4 * 2,
         "d_model"          : 512,
