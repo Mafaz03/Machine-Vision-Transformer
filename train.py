@@ -300,7 +300,7 @@ def run_training_experiment() -> None:
 
     # 7. Instantiate MSE Loss or smthing idk
     # loss_fn = torch.nn.MSELoss()
-    loss_fn = CFDLoss()
+    loss_fn = CFDLoss(patch_size = config['patch_size'], grid_size = config['grid_size'])
 
 
 
