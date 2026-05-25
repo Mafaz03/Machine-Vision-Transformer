@@ -170,9 +170,11 @@ class CFDLoss(nn.Module):
         # patches: (B, num_patches, patch_dim) -> (B, C, H, W)
         B, num_patches, patch_dim = patches.shape
         p = int(num_patches ** 0.5)
+        spatial = p * self.patch_size
+
         patches = patches.view(B, p, p, self.channels, self.patch_size, self.patch_size)
         patches = patches.permute(0, 3, 1, 4, 2, 5).contiguous()
-        return patches.view(B, self.channels, self.grid_size, self.grid_size)
+        return patches.view(B, self.channels, spatial, spatial)
 
     def spatial_gradient_loss(self, pred, target):
         # pred, target: (B, C, H, W)
