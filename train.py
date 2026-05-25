@@ -168,8 +168,8 @@ class CFDLoss(nn.Module):
 
     def patches_to_field(self, patches):
         # patches: (B, num_patches, patch_dim) -> (B, C, H, W)
-        B = patches.shape[0]
-        p = self.grid_size // self.patch_size
+        B, num_patches, patch_dim = patches.shape
+        p = int(num_patches ** 0.5)
         patches = patches.view(B, p, p, self.channels, self.patch_size, self.patch_size)
         patches = patches.permute(0, 3, 1, 4, 2, 5).contiguous()
         return patches.view(B, self.channels, self.grid_size, self.grid_size)
