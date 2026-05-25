@@ -238,8 +238,8 @@ def run_training_experiment() -> None:
     # small
     config = {
         "grid_size"        : 64,
-        "patch_size"       : 4,
-        "patch_dim"        : 4 * 4 * 2,
+        "patch_size"       : 1,
+        "patch_dim"        : 1 * 1 * 2,
         "d_model"          : 64,
         "N"                : 10,
         "num_heads"        : 32,
