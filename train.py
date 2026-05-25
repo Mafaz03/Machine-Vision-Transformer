@@ -238,20 +238,19 @@ def run_training_experiment() -> None:
     # small
     config = {
         "grid_size"        : 64,
-        "patch_size"       : 1,
-        "patch_dim"        : 1 * 1 * 2,
-        "d_model"          : 64,
-        "N"                : 10,
-        "num_heads"        : 32,
+        "patch_size"       : 8,    
+        "patch_dim"        : 8*8*2,
+        "d_model"          : 256,
+        "N"                : 6,
+        "num_heads"        : 8,    
         "d_ff"             : 1024,
         "dropout"          : 0.01,
-        "train_batch_size" : 1,
-        "test_batch_size"  : 10,
-        "epochs"           : 80,
+        "train_batch_size" : 8,
+        "test_batch_size"  : 8,
+        "epochs"           : 500,
         "device"           : 'cuda' if torch.cuda.is_available() else 'cpu',
-        'save_every'       : 4
+        "save_every"       : 20
     }
-
     # 2. Build dataset from dataset.py
     # 3. Create DataLoaders for train / val 
 
