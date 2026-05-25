@@ -147,7 +147,7 @@ def run_training_experiment() -> None:
         "patch_size"       : 4,
         "patch_dim"        : 4 * 4 * 2,
         "d_model"          : 512,
-        "N"                : 15,
+        "N"                : 10,
         "num_heads"        : 32,
         "d_ff"             : 1024,
         "dropout"          : 0.1,
@@ -170,7 +170,7 @@ def run_training_experiment() -> None:
     )
 
     # split sizes
-    train_size = int(0.8 * len(cfd_dataset))
+    train_size = int(0.9 * len(cfd_dataset))
     test_size  = len(cfd_dataset) - train_size
 
     # random split
