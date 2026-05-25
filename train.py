@@ -148,7 +148,7 @@ def run_training_experiment() -> None:
         "patch_dim"        : 4 * 4 * 2,
         "d_model"          : 512,
         "N"                : 15,
-        "num_heads"        : 20,
+        "num_heads"        : 32,
         "d_ff"             : 1024,
         "dropout"          : 0.1,
         "train_batch_size" : 2,
