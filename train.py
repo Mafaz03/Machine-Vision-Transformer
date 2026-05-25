@@ -146,7 +146,7 @@ def run_training_experiment() -> None:
         "grid_size"        : 128,
         "patch_size"       : 4,
         "patch_dim"        : 4 * 4 * 2,
-        "d_model"          : 256,
+        "d_model"          : 512,
         "N"                : 8,
         "num_heads"        : 8,
         "d_ff"             : 1024,
