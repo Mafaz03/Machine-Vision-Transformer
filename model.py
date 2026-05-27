@@ -51,7 +51,7 @@ def make_tgt_mask(tgt: torch.Tensor, pad_idx: int = -1):
     
     mask = torch.triu(torch.ones(tgt_len, tgt_len), diagonal=1).bool()
     mask = mask.unsqueeze(0).unsqueeze(0)
-    mask = mask.expand(B, 1, tgt_len, tgt_len)
+    mask = mask.expand(B, 8, tgt_len, tgt_len)
 
     return mask
 
@@ -361,13 +361,15 @@ class Transformer(nn.Module):
 
         # self.src_embedding = nn.Embedding(src_vocab_size, d_model)
         self.src_projection = nn.Linear(1, d_model) # old, very weak
-        self.re_encoder = nn.Sequential(            # newer, idk, lets see
-            nn.Linear(1, d_model),
-            nn.ReLU(),
-            nn.Linear(d_model, d_model),
-            nn.ReLU(),
-            nn.Linear(d_model, d_model),
+        self.re_encoder = nn.Sequential(
+            nn.Linear(1, d_model * 2),
+            nn.GELU(),
+            nn.Linear(d_model * 2, d_model * 2),
+            nn.GELU(),
+            nn.Linear(d_model * 2, d_model),
         )
+        # project Re to multiple "memory tokens" for richer cross-attention
+        self.re_expander = nn.Linear(d_model, d_model * 8)  # 8 memory tokens)
         
         # self.positional_encodings = PositionalEncoding(d_model = d_model, dropout = dropout, max_len = 5000)
         # self.positional_encodings = LearnedPositionalEncoding(d_model = d_model, dropout = dropout, max_len = 5000)
@@ -398,17 +400,23 @@ class Transformer(nn.Module):
         Returns:
             memory : Encoder output, shape [batch, src_len, d_model]
         """
-        src         = src.float().unsqueeze(-1) 
-        src = src.float()
+        src = src.float().unsqueeze(-1) 
         if src.dim() == 1:
-            src = src.unsqueeze(-1)                                         # [B, 1]
+            src = src.unsqueeze(-1)                                         # [B, 1, 1]
 
-        # src_dk      = self.src_projection(src)                                           # [B, d_model]
-        src_dk      = self.re_encoder(src)                                           # [B, d_model]
+        # src_dk      = self.src_projection(src)                            # [B, d_model]
+        re_emb      = self.re_encoder(src)                                  # [B, d_model]
+        re_expanded = self.re_expander(re_emb)                              # (B, 1, d_model*8)
+
+        B = re_expanded.shape[0]
+
+        memory = re_expanded.view(B, 8, self.d_model)                       # (B, 8, d_model)
+
+        self.memory = memory
   
-        src_pos     = self.positional_encodings(src_dk)                                  # [B, 1, d_model]
-        self.memory = self.encoder(src_pos, src_mask)                                    # [B, 1, d_model]
-        return self.memory                                                               # [B, 1, d_model]
+        # src_pos     = self.positional_encodings(src_dk)                     # [B, 1, d_model]
+        # self.memory = self.encoder(src_pos, src_mask)                       # [B, 1, d_model]
+        # return self.memory                                                  # [B, 1, d_model]
 
 
     def decode(
