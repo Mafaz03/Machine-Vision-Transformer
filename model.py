@@ -150,12 +150,18 @@ class MultiHeadAttention(nn.Module):
 class LearnedPositionalEncoding(nn.Module):
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
         super().__init__()
-        self.dropout = nn.Dropout(dropout)
- 
-        self.embedding = torch.nn.Embedding(max_len, d_model)
 
-    def forward(self, x:torch.tensor):
-        return self.dropout(self.embedding(x))
+        self.dropout = nn.Dropout(dropout)
+        self.embedding = nn.Embedding(max_len, d_model)
+
+    def forward(self, x):
+        B, seq_len, _ = x.shape
+
+        positions = torch.arange(seq_len, device=x.device).unsqueeze(0).expand(B, seq_len)
+
+        pos_embed = self.embedding(positions)
+
+        return self.dropout(x + pos_embed)
 
 
 class PositionalEncoding(nn.Module):
