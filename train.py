@@ -210,8 +210,9 @@ class CFDLoss(nn.Module):
         return divergence.pow(2).mean()  # should be 0 (best case)
 
     def forward(self, pred, target):
-        pred = pred[:, :, :-(4 * self.num_freq)]          # removing pos embedding
-        target = target[:, :, :-(4 * self.num_freq)]      # removing pos embedding
+        pos_dim = 4 * self.num_freq  # 32
+        pred = pred[:, :, :-pos_dim]          # removing pos embedding
+        target = target[:, :, :-pos_dim]      # removing pos embedding
         B, seq_len, patch_dim = pred.shape     
         p = self.grid_size // self.patch_size  # 16
         
