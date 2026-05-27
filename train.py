@@ -227,7 +227,7 @@ class CFDLoss(nn.Module):
         grad_loss = self.spatial_gradient_loss(pred_field, target_field)
         div_loss  = self.divergence_loss(pred_field)  # physics constraint
 
-        return mse_loss + self.grad_weight * grad_loss + self.div_weight * div_loss
+        return (10 * mse_loss) + self.grad_weight * grad_loss + self.div_weight * div_loss
     
 def run_training_experiment() -> None:
 
