@@ -360,7 +360,14 @@ class Transformer(nn.Module):
         self.dropout = dropout
 
         # self.src_embedding = nn.Embedding(src_vocab_size, d_model)
-        self.src_projection = nn.Linear(1, d_model)
+        self.src_projection = nn.Linear(1, d_model) # old, very weak
+        self.re_encoder = nn.Sequential(            # newer, idk, lets see
+            nn.Linear(1, d_model),
+            nn.ReLU(),
+            nn.Linear(d_model, d_model),
+            nn.ReLU(),
+            nn.Linear(d_model, d_model),
+        )
         
         # self.positional_encodings = PositionalEncoding(d_model = d_model, dropout = dropout, max_len = 5000)
         # self.positional_encodings = LearnedPositionalEncoding(d_model = d_model, dropout = dropout, max_len = 5000)
@@ -396,7 +403,8 @@ class Transformer(nn.Module):
         if src.dim() == 1:
             src = src.unsqueeze(-1)                                         # [B, 1]
 
-        src_dk      = self.src_projection(src)                                           # [B, d_model]
+        # src_dk      = self.src_projection(src)                                           # [B, d_model]
+        src_dk      = self.re_encoder(src)                                           # [B, d_model]
   
         src_pos     = self.positional_encodings(src_dk)                                  # [B, 1, d_model]
         self.memory = self.encoder(src_pos, src_mask)                                    # [B, 1, d_model]
