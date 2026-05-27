@@ -74,16 +74,28 @@ class CFD_Dataset(Dataset):
         self.v_mean = np.mean(self.v_mean_list)
         self.v_std  = np.mean(self.v_std_list)
 
+        # postional embedding from file itself
+        coords = []
+        patches_per_side = grid_size // patch_size
+        for row in range(patches_per_side):
+            for col in range(patches_per_side):
+                cx = (col + 0.5) / patches_per_side  # normalized [0,1]
+                cy = (row + 0.5) / patches_per_side
+                coords.append([cx, cy])
+
+        coords_tensor = torch.tensor(coords, dtype=torch.float32)  # (num_patches, 2)
+
         for i, uv_grid in enumerate(self.patches_list):
             uv_grid[0] = (uv_grid[0] - self.u_mean) / (self.u_std + 1e-8)
             uv_grid[1] = (uv_grid[1] - self.v_mean) / (self.v_std + 1e-8)
 
             uv_tensor = torch.tensor(uv_grid)
             patches = uv_tensor.unsqueeze(0)
-            patches = patches.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)
-            patches = patches.permute(0, 2, 3, 1, 4, 5)
+            patches = patches.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)   # (1, C, patch_row, patch_col, patch_h, patch_w)
+            patches = patches.permute(0, 2, 3, 1, 4, 5)                                             # (1, patch_row, patch_col, C, patch_h, patch_w)
             _, pr, pc, C, ph, pw = patches.shape
-            patches = patches.contiguous().view(pr * pc, C * ph * pw)
+            patches = patches.contiguous().view(pr * pc, C * ph * pw)                               # patches: (patch_row * patch_col, C * patch_h * patch_w)
+            patches = torch.cat([patches, coords_tensor], dim=-1)                                   # patches: (patch_row * patch_col, C * patch_h * patch_w + 2)
             self.patches_list[i] = patches
 
 
@@ -105,8 +117,10 @@ if "__main__" == __name__:
 
     re, patches = next(iter(dataloader))
 
-    print("src:", re.shape)   # (B, 1)
-    print("tgt:", patches.shape)  # (B, 16, 512)  -- 16 patches, 2*16*16=512 patch_dim
+    print("src:", re.shape)       # (B, 1)
+    print("tgt:", patches.shape)  # (B, 16, 512 + 2)
+    patches = patches[:, : , :-2] # (B, 16, 512)      -- 16 patches, 2*16*16=512 patch_dim
+    print("tgt:", patches.shape)  # (B, 16, 512 + 2)  -- 16 patches, 2*16*16=512 patch_dim
     
     patches = patches.squeeze(0) # remove B for now
     re = re.squeeze(0) # remove B for now
