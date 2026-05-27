@@ -394,7 +394,7 @@ class Transformer(nn.Module):
         Run the full encoder stack.
 
         Args:
-            src      : Token indices, shape [batch, src_len]
+            src      : Token indices, shape [batch, 1, src_len]
             src_mask : shape [batch, 1, 1, src_len]
 
         Returns:
@@ -413,6 +413,7 @@ class Transformer(nn.Module):
         memory = re_expanded.view(B, 8, self.d_model)                       # (B, 8, d_model)
 
         self.memory = memory
+        return self.memory
   
         # src_pos     = self.positional_encodings(src_dk)                     # [B, 1, d_model]
         # self.memory = self.encoder(src_pos, src_mask)                       # [B, 1, d_model]
