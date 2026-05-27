@@ -8,6 +8,16 @@ import pandas as pd
 from scipy.interpolate import griddata
 import os
 
+
+def fourier_features(cords: torch.tensor, num_freq = 8):
+    # [num_patches, 2] -> [num_patches, C * num_freq * 2]
+    freqs = 2 ** torch.linspace(0, num_freq - 1, num_freq)                   # [num_freqs]
+    angles = (cords.unsqueeze(-1) * freqs * 2 * torch.pi)                    # [num_patches, C, num_freq]
+    encoded = torch.cat([torch.sin(angles), torch.cos(angles)], dim = -1)    # [num_patches, C, num_freq * 2]
+    return encoded.view(cords.shape[0], -1)                                  # [num_patches, C * num_freq * 2]
+
+
+
 class CFD_Dataset(Dataset):
 
     def __init__(self, root: str = "Data", patch_size: int = 8, grid_size = 64):
@@ -84,6 +94,7 @@ class CFD_Dataset(Dataset):
                 coords.append([cx, cy])
 
         coords_tensor = torch.tensor(coords, dtype=torch.float32)  # (num_patches, 2)
+        coords_tensor = fourier_features(cords = coords_tensor, num_freq = 8)
 
         for i, uv_grid in enumerate(self.patches_list):
             uv_grid[0] = (uv_grid[0] - self.u_mean) / (self.u_std + 1e-8)
@@ -95,7 +106,7 @@ class CFD_Dataset(Dataset):
             patches = patches.permute(0, 2, 3, 1, 4, 5)                                             # (1, patch_row, patch_col, C, patch_h, patch_w)
             _, pr, pc, C, ph, pw = patches.shape
             patches = patches.contiguous().view(pr * pc, C * ph * pw)                               # patches: (patch_row * patch_col, C * patch_h * patch_w)
-            patches = torch.cat([patches, coords_tensor], dim=-1)                                   # patches: (patch_row * patch_col, C * patch_h * patch_w + 2)
+            patches = torch.cat([patches, coords_tensor], dim=-1)                                   # patches: (patch_row * patch_col, C * patch_h * patch_w + (4 * num_freq))
             self.patches_list[i] = patches
 
 
@@ -117,10 +128,10 @@ if "__main__" == __name__:
 
     re, patches = next(iter(dataloader))
 
-    print("src:", re.shape)       # (B, 1)
-    print("tgt:", patches.shape)  # (B, 16, 512 + 2)
-    patches = patches[:, : , :-2] # (B, 16, 512)      -- 16 patches, 2*16*16=512 patch_dim
-    print("tgt:", patches.shape)  # (B, 16, 512 + 2)  -- 16 patches, 2*16*16=512 patch_dim
+    print("src:", re.shape)           # (B, 1)
+    print("tgt:", patches.shape)      # (B, 16, 512 + (4 * 8))
+    patches = patches[:, : , :-(4*8)] # (B, 16, 512)
+    print("tgt:", patches.shape)      # (B, 16, 512)      -- 16 patches, 2*16*16=512 patch_dim
     
     patches = patches.squeeze(0) # remove B for now
     re = re.squeeze(0) # remove B for now

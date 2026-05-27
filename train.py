@@ -66,7 +66,7 @@ def run_epoch(
     return sum(losses)/len(losses)
 
 
-def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, device = "cpu"):
+def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_freq = 8, device = "cpu"):
     # coords_tensor: [max_len, 2], where max_len: (grid_size // patch_size)**2
 
     with torch.no_grad():
@@ -95,7 +95,7 @@ def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, devic
             
             # newest predicted patch
             # next_patch = out[:, -1:, :]
-            next_patch = out[:, -1:, :-2]  # strip coord dims from output
+            next_patch = out[:, -1:, :-(4 * num_freq)]  # strip coord dims from output
 
             # append
             ys = torch.cat([ys, next_patch], dim=1)
@@ -164,7 +164,7 @@ def load_checkpoint(
 #         return mse_loss + self.grad_weight * grad_loss
         
 class CFDLoss(nn.Module):
-    def __init__(self, grad_weight=0.1, div_weight=0.1, patch_size=8, grid_size=64, channels=2):
+    def __init__(self, grad_weight=0.1, div_weight=0.1, patch_size=8, grid_size=64, channels=2, num_freq = 8):
         super().__init__()
         self.mse         = nn.MSELoss()
         self.grad_weight = grad_weight
@@ -172,6 +172,8 @@ class CFDLoss(nn.Module):
         self.patch_size  = patch_size
         self.grid_size   = grid_size
         self.channels    = channels
+        
+        self.num_freq    = num_freq
 
     def patches_to_field(self, patches):
         # patches: (B, num_patches, patch_dim) -> (B, C, H, W)
@@ -208,8 +210,8 @@ class CFDLoss(nn.Module):
         return divergence.pow(2).mean()  # should be 0 (best case)
 
     def forward(self, pred, target):
-        pred = pred[:, :, :-2]          # removing pos embedding
-        target = target[:, :, :-2]      # removing pos embedding
+        pred = pred[:, :, :-(4 * self.num_freq)]          # removing pos embedding
+        target = target[:, :, :-(4 * self.num_freq)]      # removing pos embedding
         B, seq_len, patch_dim = pred.shape     
         p = self.grid_size // self.patch_size  # 16
         
