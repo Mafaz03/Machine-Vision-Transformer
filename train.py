@@ -201,7 +201,9 @@ class CFDLoss(nn.Module):
         return divergence.pow(2).mean()  # should be 0 (best case)
 
     def forward(self, pred, target):
-        B, seq_len, patch_dim = pred.shape
+        pred = pred[:, :, :-2]          # removing pos embedding
+        target = target[:, :, :-2]      # removing pos embedding
+        B, seq_len, patch_dim = pred.shape     
         p = self.grid_size // self.patch_size  # 16
         
         # trim to largest complete square that fits
