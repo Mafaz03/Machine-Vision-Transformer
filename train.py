@@ -299,10 +299,10 @@ def run_training_experiment() -> None:
     transformer = transformer.to(config["device"])
 
     # 5. Instantiate Adam optimizer (β1=0.9, β2=0.98, ε=1e-9)
-    optimizer = optim.Adam(transformer.parameters(), betas = [0.9, 0.98], lr=1)
+    optimizer = optim.Adam(transformer.parameters(), betas = [0.9, 0.98], lr=1e-3)
 
     # 6. Instantiate NoamScheduler(optimizer, d_model, warmup_steps=4000)
-    scheduler = NoamScheduler(optimizer, d_model = config["d_model"], warmup_steps = 5000)
+    scheduler = NoamScheduler(optimizer, d_model = config["d_model"], warmup_steps = 5000, const_lr = True)
 
     # 7. Instantiate MSE Loss or smthing idk
     # loss_fn = torch.nn.MSELoss()
