@@ -193,6 +193,14 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:, :seq_len, :]
         return self.dropout(x)
     
+
+class NoOp(nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+
+    def forward(self, x, *args, **kwargs):
+        return x
+    
 class PositionwiseFeedForward(nn.Module):
     def __init__(self, d_model, d_ff, dropout=0.1):
         super().__init__()
@@ -356,6 +364,7 @@ class Transformer(nn.Module):
         
         # self.positional_encodings = PositionalEncoding(d_model = d_model, dropout = dropout, max_len = 5000)
         # self.positional_encodings = LearnedPositionalEncoding(d_model = d_model, dropout = dropout, max_len = 5000)
+        self.positional_encodings = NoOp(d_model = d_model, dropout = dropout, max_len = 5000)
 
         encoder_layer = EncoderLayer(d_model = d_model, num_heads = num_heads, d_ff = d_ff, dropout = dropout)
         self.encoder  = Encoder(layer = encoder_layer, N = N)
@@ -382,14 +391,12 @@ class Transformer(nn.Module):
         Returns:
             memory : Encoder output, shape [batch, src_len, d_model]
         """
-        # src_dk      = (self.src_embedding(src) * math.sqrt(self.d_model)).unsqueeze(1) # [B, 1, d_model]
         src         = src.float().unsqueeze(-1) 
         src = src.float()
         if src.dim() == 1:
             src = src.unsqueeze(-1)                                         # [B, 1]
 
         src_dk      = self.src_projection(src)                                           # [B, d_model]
-        # src_dk      = src_dk.unsqueeze(1)                                                # [B, 1, d_model]
   
         src_pos     = self.positional_encodings(src_dk)                                  # [B, 1, d_model]
         self.memory = self.encoder(src_pos, src_mask)                                    # [B, 1, d_model]
