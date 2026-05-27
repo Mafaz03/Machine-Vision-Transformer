@@ -66,7 +66,9 @@ def run_epoch(
     return sum(losses)/len(losses)
 
 
-def greedy_decode(model, src, src_mask, max_len, patch_dim, device = "cpu"):
+def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, device = "cpu"):
+    # coords_tensor: [max_len, 2], where max_len: (grid_size // patch_size)**2
+
     with torch.no_grad():
         src = src.to(device)
         src_mask = src_mask.to(device)
@@ -77,23 +79,28 @@ def greedy_decode(model, src, src_mask, max_len, patch_dim, device = "cpu"):
         memory = model.encode(src, src_mask)
 
         # loop
-        for _ in tqdm(range(max_len)):
+        for i in tqdm(range(max_len)):
+            # inject known coords for current position
+            coords_so_far = coords_tensor[:ys.shape[1]].unsqueeze(0).expand(B, -1, 2).to(device) # [B, i, 2]
+            ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                              # [B, i, i + 2]
+
             # decoding
-            tgt_mask = make_tgt_mask(ys).to(device)
+            tgt_mask = make_tgt_mask(ys_with_coords).to(device)
             out = model.decode(
                     memory,
                     src_mask,
-                    ys,
+                    ys_with_coords,
                     tgt_mask
-                )
+                ) # [B, num_patches, patch_dim]
             
             # newest predicted patch
-            next_patch = out[:, -1:, :]
+            # next_patch = out[:, -1:, :]
+            next_patch = out[:, -1:, :-2]  # strip coord dims from output
 
             # append
             ys = torch.cat([ys, next_patch], dim=1)
 
-    return ys[:, 1:, :]
+    return ys[:, 1:, :] # (B, num_patches, C*ph*pw) -- no coords
 
 
 def save_checkpoint(
