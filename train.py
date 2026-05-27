@@ -269,7 +269,7 @@ def run_training_experiment() -> None:
 
     cfd_dataset = CFD_Dataset(
         root="Data",
-        patch_size=config["patch_size"], 
+        patch_size = config["patch_size"], 
         grid_size = config["grid_size"]
 
     )

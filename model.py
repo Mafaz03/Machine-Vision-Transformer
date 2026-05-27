@@ -39,6 +39,17 @@ def scaled_dot_product_attention(
     output = torch.matmul(attn_weights, V)                  # (B, H, seq_q, d_v)
 
     return output, attn_weights
+
+    # # in cross attention: (BASICALLY MEMORY'S SEQ LENGTH DIFFERENCE FROM DECODER'S SEQ LEN DOESNT MATTER, MEMORY SEQ LEN(8) MUST BE THE SAME)
+    # Q = self.WQ(x)       # (B, num_patches, d_model) -- from decoder
+    # K = self.WK(memory)  # (B, 8, d_model)           -- from encoder
+    # V = self.WV(memory)  # (B, 8, d_model)           -- from encoder
+
+    # # attention scores
+    # scores = Q @ K.T  # (B, num_patches, 8)  -- each patch attends over 8 memory tokens
+
+    # # weighted sum
+    # out = scores @ V  # (B, num_patches, d_model)  -- back to decoder seq len
     
     
 
@@ -113,19 +124,22 @@ class MultiHeadAttention(nn.Module):
                                   # dim_v == dim_model
 
         # Linear Projection
-        Q = self.WQ(query) # [batch, seq_q, d_model] x [d_model, d_model] -> [batch, seq_q, d_model]
-        K = self.WK(key)   # [batch, seq_q, d_model] x [d_model, d_model] -> [batch, seq_k, d_model]
-        V = self.WV(value) # [batch, seq_q, d_model] x [d_model, d_model] -> [batch, seq_v, d_model]
+        Q = self.WQ(query) # [batch, seq_q, d_model] x [d_model, d_model] -> [batch, seq_q, d_model];      seq_q: num_patches
+        K = self.WK(key)   # [batch, seq_q, d_model] x [d_model, d_model] -> [batch, seq_k, d_model];      seq_k: num_patches
+        V = self.WV(value) # [batch, seq_q, d_model] x [d_model, d_model] -> [batch, seq_v, d_model];      seq_v: num_patches
         
         # Split into heads
         Q = Q.view(B, seq_q, self.num_heads, self.d_k).transpose(1, 2)  # [batch, seq_q, num_heads, d_k]
                                                         # After transpose [batch, num_heads, seq_q, d_k]
+                                                        # After transpose [batch, num_heads, num_patches, d_k]
 
         K = K.view(B, seq_k, self.num_heads, self.d_k).transpose(1, 2)  # [batch, seq_k, num_heads, d_k]
                                                         # After transpose [batch, num_heads, seq_q, d_k]
+                                                        # After transpose [batch, num_heads, num_patches, d_k]
 
         V = V.view(B, seq_k, self.num_heads, self.d_k).transpose(1, 2)  # [batch, seq_v, num_heads, d_k]
                                                         # After transpose [batch, num_heads, seq_v, d_k]
+                                                        # After transpose [batch, num_heads, num_patches, d_k]
 
         # print("Q:", Q.shape)
         # print("K:", K.shape)
@@ -255,8 +269,8 @@ class DecoderLayer(nn.Module):
     def __init__(self, d_model: int, num_heads: int, d_ff: int, dropout: float = 0.1) -> None:
         super().__init__()
         self.d_model = d_model
-        self.self_attn = MultiHeadAttention(d_model = d_model, num_heads = num_heads, dropout = dropout)
-        self.cross_attn = MultiHeadAttention(d_model, num_heads, dropout)
+        self.self_attn  = MultiHeadAttention(d_model = d_model, num_heads = num_heads, dropout = dropout)
+        self.cross_attn = MultiHeadAttention(d_model = d_model, num_heads = num_heads, dropout = dropout)
 
         self.ffn = PositionwiseFeedForward(d_model, d_ff, dropout)
         
@@ -311,7 +325,7 @@ class Decoder(nn.Module):
     def __init__(self, layer: DecoderLayer, N: int) -> None:
         super().__init__()
         self.decoder_layers = torch.nn.ModuleList([copy.deepcopy(layer) for _ in range(N)])
-        self.layer_norm = torch.nn.LayerNorm(layer.d_model)
+        self.layer_norm     = torch.nn.LayerNorm(layer.d_model)
 
     def forward(
         self,
@@ -402,11 +416,11 @@ class Transformer(nn.Module):
         """
         src = src.float().unsqueeze(-1) 
         if src.dim() == 1:
-            src = src.unsqueeze(-1)                                         # [B, 1, 1]
+            src = src.unsqueeze(-1)                                         # [B, 1]
 
         # src_dk      = self.src_projection(src)                            # [B, d_model]
         re_emb      = self.re_encoder(src)                                  # [B, d_model]
-        re_expanded = self.re_expander(re_emb)                              # (B, 1, d_model*8)
+        re_expanded = self.re_expander(re_emb)                              # (B, d_model*8)
 
         B = re_expanded.shape[0]
 
