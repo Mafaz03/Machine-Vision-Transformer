@@ -218,8 +218,7 @@ class CFDLoss(nn.Module):
         u_target = target[:, 0, :, :]
         v_target = target[:, 1, :, :]
 
-        return (((u_pred**2) + (v_pred**2)) ** 0.5) - (((u_target**2) + (v_target**2)) ** 0.5)
-
+        return ((((u_pred**2) + (v_pred**2)) ** 0.5) - (((u_target**2) + (v_target**2)) ** 0.5)).mean()
 
 
     def forward(self, pred, target):
