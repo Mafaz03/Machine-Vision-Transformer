@@ -40,8 +40,13 @@ def run_epoch(
             tgt_mask = make_tgt_mask(tgt)
 
             # shift for teacher forcing
-            tgt_input = tgt[:, :-1, :]
-            tgt_output = tgt[:, 1:, :]
+            B, seq_len, patch_dim = tgt.shape
+            start_token = torch.zeros(B, 1, patch_dim).to(device)
+            tgt_input = torch.cat([start_token, tgt[:, :-1, :]], dim=1) # [B,]
+            tgt_output = tgt
+
+            # tgt_input = tgt[:, :-1, :]
+            # tgt_output = tgt[:, 1:, :]
 
             tgt_mask = make_tgt_mask(tgt_input)
 
