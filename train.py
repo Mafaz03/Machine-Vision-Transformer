@@ -54,7 +54,7 @@ def run_epoch(
             logits = model(src, tgt_input, src_mask, tgt_mask)
 
             # loss
-            loss = loss_fn(logits, tgt_output)
+            loss = loss_fn(logits, tgt_output, src)
 
             if is_train:
                 optimizer.zero_grad()
@@ -235,7 +235,7 @@ class CFDLoss(nn.Module):
         return ((((u_pred**2) + (v_pred**2)) ** 0.5) - (((u_target**2) + (v_target**2)) ** 0.5)).mean().abs()
 
 
-    def forward(self, pred, target):
+    def forward(self, pred, target, re_norm):
         pos_dim = 4 * self.num_freq  # 32
         pred = pred[:, :, :-pos_dim]          # removing pos embedding
         target = target[:, :, :-pos_dim]      # removing pos embedding
@@ -254,7 +254,9 @@ class CFDLoss(nn.Module):
         div_loss  = self.divergence_loss(pred_field)  # physics constraint
         mag_loss  = self.maginitude_loss(pred_field, target_field)  
 
-        return (1 * mse_loss) + (1 * mag_loss) + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
+        re_weight = 1 + torch.exp(-re_norm).mean() # smaller re batch -> more importance
+
+        return (1 * mse_loss * re_weight) + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
     
 def run_training_experiment() -> None:
 
