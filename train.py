@@ -208,6 +208,19 @@ class CFDLoss(nn.Module):
 
         divergence = du_dx[:, :min_h, :min_w] + dv_dy[:, :min_h, :min_w]
         return divergence.pow(2).mean()  # should be 0 (best case)
+    
+    def maginitude_loss(self, pred, target):
+        # pred: (B, C, H, W) where C=0 is u, C=1 is v
+
+        u_pred = pred[:, 0, :, :]
+        v_pred = pred[:, 1, :, :]
+
+        u_target = target[:, 0, :, :]
+        v_target = target[:, 1, :, :]
+
+        return (((u_pred**2) + (v_pred**2)) ** 0.5) - (((u_target**2) + (v_target**2)) ** 0.5)
+
+
 
     def forward(self, pred, target):
         pos_dim = 4 * self.num_freq  # 32
@@ -226,8 +239,9 @@ class CFDLoss(nn.Module):
         mse_loss  = self.mse(pred_field, target_field)
         grad_loss = self.spatial_gradient_loss(pred_field, target_field)
         div_loss  = self.divergence_loss(pred_field)  # physics constraint
+        mag_loss  = self.maginitude_loss(pred_field, target_field)  
 
-        return (10 * mse_loss) + self.grad_weight * grad_loss + self.div_weight * div_loss
+        return (1 * mse_loss) + (1 * mag_loss) #+ self.grad_weight * grad_loss + self.div_weight * div_loss
     
 def run_training_experiment() -> None:
 
