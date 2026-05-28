@@ -88,8 +88,14 @@ def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_f
         # loop
         for i in tqdm(range(max_len)):
             # inject known coords for current position
-            coords_so_far = coords_tensor[:ys.shape[1]].unsqueeze(0).expand(B, -1, pos_dim).to(device) # [B, i, pos_dim]
-            ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                                    # [B, i, i + pos_dim]
+            # coords_so_far = coords_tensor[:ys.shape[1]].unsqueeze(0).expand(B, -1, pos_dim).to(device) # [B, i, pos_dim]
+            # ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                                    # [B, i, i + pos_dim]
+
+            start_coord = torch.zeros(1, pos_dim).to(device)
+            coords_so_far = coords_tensor[:ys.shape[1]-1].to(device)
+            coords_so_far = torch.cat([start_coord, coords_so_far], dim=0)                              # (seq_len, pos_dim)
+            coords_so_far = coords_so_far.unsqueeze(0).expand(B, -1, pos_dim)                           # [B, i, pos_dim]
+            ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                                     # [B, i, i + pos_dim]
 
             # decoding
             tgt_mask = make_tgt_mask(ys_with_coords).to(device)
@@ -248,7 +254,7 @@ class CFDLoss(nn.Module):
         div_loss  = self.divergence_loss(pred_field)  # physics constraint
         mag_loss  = self.maginitude_loss(pred_field, target_field)  
 
-        return (1 * mse_loss)# + (5 * mag_loss) + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
+        return (1 * mse_loss) + (1 * mag_loss) + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
     
 def run_training_experiment() -> None:
 
