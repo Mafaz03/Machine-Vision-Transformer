@@ -66,13 +66,15 @@ def run_epoch(
     return sum(losses)/len(losses)
 
 
-def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_freq = 8, device = "cpu"):
+def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_freq = 16, device = "cpu"):
     # coords_tensor: [max_len, 2], where max_len: (grid_size // patch_size)**2
+
+    pos_dim = 4 * num_freq  # 32
 
     with torch.no_grad():
         src = src.to(device)
         src_mask = src_mask.to(device)
-        
+
         B = src.shape[0]
         # encode
         ys = torch.zeros(B, 1, patch_dim).to(device)
@@ -81,8 +83,8 @@ def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_f
         # loop
         for i in tqdm(range(max_len)):
             # inject known coords for current position
-            coords_so_far = coords_tensor[:ys.shape[1]].unsqueeze(0).expand(B, -1, 2).to(device) # [B, i, 2]
-            ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                              # [B, i, i + 2]
+            coords_so_far = coords_tensor[:ys.shape[1]].unsqueeze(0).expand(B, -1, pos_dim).to(device) # [B, i, pos_dim]
+            ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                                    # [B, i, i + pos_dim]
 
             # decoding
             tgt_mask = make_tgt_mask(ys_with_coords).to(device)
@@ -92,15 +94,16 @@ def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_f
                     ys_with_coords,
                     tgt_mask
                 ) # [B, num_patches, patch_dim]
-            
+
             # newest predicted patch
             # next_patch = out[:, -1:, :]
-            next_patch = out[:, -1:, :-(4 * num_freq)]  # strip coord dims from output
+            next_patch = out[:, -1:, :-pos_dim]  # strip coord dims from output
 
             # append
             ys = torch.cat([ys, next_patch], dim=1)
 
     return ys[:, 1:, :] # (B, num_patches, C*ph*pw) -- no coords
+
 
 
 def save_checkpoint(
@@ -164,7 +167,7 @@ def load_checkpoint(
 #         return mse_loss + self.grad_weight * grad_loss
         
 class CFDLoss(nn.Module):
-    def __init__(self, grad_weight=0.1, div_weight=0.1, patch_size=8, grid_size=64, channels=2, num_freq = 8):
+    def __init__(self, grad_weight=0.1, div_weight=0.1, patch_size=8, grid_size=64, channels=2, num_freq = 16):
         super().__init__()
         self.mse         = nn.MSELoss()
         self.grad_weight = grad_weight
@@ -264,7 +267,7 @@ def run_training_experiment() -> None:
     config = {
         "grid_size"        : 64,
         "patch_size"       : 8,    
-        "patch_dim"        : (8*8*2) + (4 * 8), # +2 because positional embedding was done in the dataset itself
+        "patch_dim"        : (8*8*2) + (4 * 16), # +64 because positional embedding was done in the dataset itself
         "d_model"          : 256,
         "N"                : 6,
         "num_heads"        : 8,    

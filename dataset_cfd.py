@@ -94,7 +94,7 @@ class CFD_Dataset(Dataset):
                 coords.append([cx, cy])
 
         coords_tensor = torch.tensor(coords, dtype=torch.float32)               # (num_patches, 2)
-        coords_tensor = fourier_features(cords = coords_tensor, num_freq = 8)   # (num_patches, 2 * 8 * 2)
+        coords_tensor = fourier_features(cords = coords_tensor, num_freq = 16)   # (num_patches, 2 * 16 * 2)
 
         for i, uv_grid in enumerate(self.patches_list):
             uv_grid[0] = (uv_grid[0] - self.u_mean) / (self.u_std + 1e-8)
@@ -128,10 +128,10 @@ if "__main__" == __name__:
 
     re, patches = next(iter(dataloader))
 
-    print("src:", re.shape)           # (B, 1)
-    print("tgt:", patches.shape)      # (B, 16, 512 + (4 * 8))
-    patches = patches[:, : , :-(4*8)] # (B, 16, 512)
-    print("tgt:", patches.shape)      # (B, 16, 512)      -- 16 patches, 2*16*16=512 patch_dim
+    print("src:", re.shape)            # (B, 1)
+    print("tgt:", patches.shape)       # (B, 16, 512 + (4 * 16))
+    patches = patches[:, : , :-(4*16)] # (B, 16, 512)
+    print("tgt:", patches.shape)       # (B, 16, 512)      -- 16 patches, 2*16*16=512 patch_dim
     
     patches = patches.squeeze(0) # remove B for now
     re = re.squeeze(0) # remove B for now
