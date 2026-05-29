@@ -27,7 +27,6 @@ def scaled_dot_product_attention(
     d_k = K.shape[-1]
     KT  = K.transpose(-2, -1)
     scores = torch.matmul(Q, KT) / math.sqrt(d_k)             # (B, H, seq_q, seq_k)
-    # scores = torch.matmul(Q, KT)# / math.sqrt(d_k)          # (B, H, seq_q, seq_k)
     
     if mask is not None: 
         scores = scores.masked_fill(mask.to(scores.device), float('-inf'))
@@ -40,7 +39,7 @@ def scaled_dot_product_attention(
 
     return output, attn_weights
 
-    # # in cross attention: (BASICALLY MEMORY'S SEQ LENGTH DIFFERENCE FROM DECODER'S SEQ LEN DOESNT MATTER, MEMORY SEQ LEN(8) MUST BE THE SAME)
+    # # in cross attention: (BASICALLY MEMORY'S SEQ LENGTH DIFFERENCE FROM DECODER'S SEQ LEN DOESNT MATTER, MEMORY SEQ LEN(8) MUST BE THE SAME IN K, V)
     # Q = self.WQ(x)       # (B, num_patches, d_model) -- from decoder
     # K = self.WK(memory)  # (B, 8, d_model)           -- from encoder
     # V = self.WV(memory)  # (B, 8, d_model)           -- from encoder
