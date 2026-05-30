@@ -123,8 +123,11 @@ class CFD_Dataset(Dataset):
 
 
 if "__main__" == __name__:
-    cfd_dataset = CFD_Dataset(root = "Data", patch_size=16, grid_size=64)
+    cfd_dataset = CFD_Dataset(root = "Data_with_P", patch_size=16, grid_size=64)
     dataloader  = DataLoader(cfd_dataset, batch_size = 1, shuffle = True)
+
+    print("mean: ", cfd_dataset.re_mean)
+    print("std:  ", cfd_dataset.re_std)
 
     re, patches = next(iter(dataloader))
 

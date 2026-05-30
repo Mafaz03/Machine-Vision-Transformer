@@ -95,7 +95,7 @@ def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_f
 
             start_coord = torch.zeros(1, pos_dim).to(device)
             coords_so_far = coords_tensor[:ys.shape[1]-1].to(device)
-            coords_so_far = torch.cat([start_coord, coords_so_far], dim=0)                              # (seq_len, pos_dim)
+            coords_so_far = torch.cat([start_coord, coords_so_far], dim=0)                              # (seq_len (i), pos_dim)
             coords_so_far = coords_so_far.unsqueeze(0).expand(B, -1, pos_dim)                           # [B, i, pos_dim]
             ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                                     # [B, i, i + pos_dim]
 
@@ -304,14 +304,14 @@ def run_training_experiment() -> None:
 
 
     cfd_dataset = CFD_Dataset(
-        root="Data",
+        root="Data_with_P",
         patch_size = config["patch_size"], 
         grid_size = config["grid_size"]
 
     )
 
     # split sizes
-    train_size = int(0.9 * len(cfd_dataset))
+    train_size = int(0.7 * len(cfd_dataset))
     test_size  = len(cfd_dataset) - train_size
 
     # random split
@@ -333,6 +333,20 @@ def run_training_experiment() -> None:
         shuffle=False
     )
 
+    train_re = []
+    for src, _ in train_dataloader:
+        train_re.extend([i.item() for i in (src * cfd_dataset.re_std) + cfd_dataset.re_mean])
+
+    test_re = []
+    for src, _ in test_dataloader:
+        test_re.extend([i.item() for i in (src * cfd_dataset.re_std) + cfd_dataset.re_mean])
+
+    import json
+    data = {"train_re": train_re, "test_re": test_re}
+    with open("train_test_re.json", "w", encoding="utf-8") as file:
+        json.dump(data, file)
+
+        
     # 1. Init W&B
     wandb.init(project="Machine Visiosn Transformer", config = config)
 
