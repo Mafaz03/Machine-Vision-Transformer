@@ -311,7 +311,7 @@ def run_training_experiment() -> None:
     )
 
     # split sizes
-    train_size = int(0.7 * len(cfd_dataset))
+    train_size = int(0.85 * len(cfd_dataset))
     test_size  = len(cfd_dataset) - train_size
 
     # random split
