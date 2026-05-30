@@ -288,7 +288,7 @@ def run_training_experiment() -> None:
         "grid_size"        : 64,
         "patch_size"       : 8,    
         "patch_dim"        : (8*8*2) + (4 * 16), # +64 because positional embedding was done in the dataset itself
-        "d_model"          : 256,
+        "d_model"          : 512,
         "N"                : 6,
         "num_heads"        : 8,    
         "d_ff"             : 1024,
