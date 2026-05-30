@@ -93,7 +93,7 @@ class CFD_Dataset(Dataset):
                 cy = (row + 0.5) / patches_per_side
                 coords.append([cx, cy])
 
-        coords_tensor = torch.tensor(coords, dtype=torch.float32)               # (num_patches, 2)
+        coords_tensor = torch.tensor(coords, dtype=torch.float32)                # (num_patches, 2)
         coords_tensor = fourier_features(cords = coords_tensor, num_freq = 16)   # (num_patches, 2 * 16 * 2)
 
         for i, uv_grid in enumerate(self.patches_list):
@@ -126,8 +126,12 @@ if "__main__" == __name__:
     cfd_dataset = CFD_Dataset(root = "Data_with_P", patch_size=16, grid_size=64)
     dataloader  = DataLoader(cfd_dataset, batch_size = 1, shuffle = True)
 
-    print("mean: ", cfd_dataset.re_mean)
-    print("std:  ", cfd_dataset.re_std)
+    print("mean:   ", cfd_dataset.re_mean)
+    print("std:    ", cfd_dataset.re_std)
+    print("u_mean: ", cfd_dataset.u_mean)
+    print("u_std:  ", cfd_dataset.u_std)
+    print("v_mean: ", cfd_dataset.v_mean)
+    print("v_std:  ", cfd_dataset.v_std)
 
     re, patches = next(iter(dataloader))
 
