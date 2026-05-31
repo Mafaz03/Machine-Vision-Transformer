@@ -287,7 +287,7 @@ def run_training_experiment() -> None:
     config = {
         "grid_size"        : 64,
         "patch_size"       : 8,    
-        "patch_dim"        : (8*8*2) + (4 * 16), # +64 because positional embedding was done in the dataset itself
+        "patch_dim"        : (8*8*2) + (2 * 2 * 16), # +64 because positional embedding was done in the dataset itself
         "d_model"          : 512,
         "N"                : 6,
         "num_heads"        : 8,    
@@ -295,7 +295,7 @@ def run_training_experiment() -> None:
         "dropout"          : 0.01,
         "train_batch_size" : 8,
         "test_batch_size"  : 8,
-        "epochs"           : 500,
+        "epochs"           : 150,
         "device"           : 'cuda' if torch.cuda.is_available() else 'cpu',
         "save_every"       : 20
     }
