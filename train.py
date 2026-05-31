@@ -370,8 +370,6 @@ def run_training_experiment() -> None:
     # loss_fn = torch.nn.MSELoss()
     loss_fn = CFDLoss(patch_size = config['patch_size'], grid_size = config['grid_size'])
 
-
-
     # 8. Training loop:
     for epoch in range(config['epochs']):
         transformer.train()
