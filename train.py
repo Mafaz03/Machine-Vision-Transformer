@@ -251,19 +251,20 @@ class CFDLoss(nn.Module):
         target_field = self.patches_to_field(target[:, :complete, :])
 
 
-        # mse_loss  = self.mse(pred_field, target_field)
+        mse_loss  = self.mse(pred_field, target_field)
         grad_loss = self.spatial_gradient_loss(pred_field, target_field)
         div_loss  = self.divergence_loss(pred_field)  # physics constraint
         mag_loss  = self.maginitude_loss(pred_field, target_field)  
 
         # re_weight = 1 + torch.exp(-re_norm).mean() # smaller re batch -> more importance
 
-        re_actual = (re_norm * RE_STD + RE_MEAN)
-        weights = torch.log(torch.tensor(RE_MAX) + 1) / torch.log(re_actual + 1)
-        mse_per_sample = ((pred_field - target_field)**2).mean(dim=[1,2,3])
-        mse_loss       = (mse_per_sample * weights.to(pred.device)).mean()
+        # re_actual = (re_norm * RE_STD + RE_MEAN)
+        # weights = torch.log(torch.tensor(RE_MAX) + 1) / torch.log(re_actual + 1)
+        # mse_per_sample = ((pred_field - target_field)**2).mean(dim=[1,2,3])
+        # mse_loss       = (mse_per_sample * weights.to(pred.device)).mean()
 
-        return (1 * mse_loss * weights.to(pred.device)).mean()# + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
+        # return (1 * mse_loss * weights.to(pred.device)).mean()# + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
+        return (1 * mse_loss)# + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
     
 def run_training_experiment() -> None:
 
