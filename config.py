@@ -40,7 +40,7 @@ D_MODEL    = 1024
 
 # parameters
 N         = 15 # 6
-NUM_HEADS = 15 # 8
+NUM_HEADS = 16 # 8
 D_FF      = 1024
 DROPOUT   = 0.01
 
