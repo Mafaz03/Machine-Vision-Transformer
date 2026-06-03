@@ -61,7 +61,7 @@ def make_tgt_mask(tgt: torch.Tensor, pad_idx: int = -1):
     
     mask = torch.triu(torch.ones(tgt_len, tgt_len), diagonal=1).bool()
     mask = mask.unsqueeze(0).unsqueeze(0)
-    mask = mask.expand(B, 8, tgt_len, tgt_len)
+    mask = mask.expand(B, 1, tgt_len, tgt_len) # let broadcasting handle 8
 
     return mask
 
