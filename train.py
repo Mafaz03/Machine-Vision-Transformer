@@ -233,7 +233,7 @@ class CFDLoss(nn.Module):
         pred_field   = self.patches_to_field(pred[:, :complete, :])
         target_field = self.patches_to_field(target[:, :complete, :])
 
-
+        
         mse_loss  = self.mse(pred_field, target_field)
         grad_loss = self.spatial_gradient_loss(pred_field, target_field)
         div_loss  = self.divergence_loss(pred_field)  # physics constraint
@@ -247,6 +247,10 @@ class CFDLoss(nn.Module):
         # mse_loss       = (mse_per_sample * weights.to(pred.device)).mean()
 
         # return (1 * mse_loss * weights.to(pred.device)).mean()# + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
+        u_loss = self.mse(pred_field[:, 0, :, :], target_field[:,0, :, :])
+        v_loss = self.mse(pred_field[:, 1, :, :], target_field[:,1, :, :])
+        p_loss = self.mse(pred_field[:, 2, :, :], target_field[:,2, :, :])
+        return u_loss + v_loss + 0.01 * p_loss
         return (1 * mse_loss)# + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
     
 def run_training_experiment() -> None:
