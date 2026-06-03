@@ -74,6 +74,7 @@ class CFD_Dataset(Dataset):
             u_grid = griddata(points, u, (grid_x, grid_y), method="linear", fill_value = u_fill)
             v_grid = griddata(points, v, (grid_x, grid_y), method="linear", fill_value = v_fill)
             P_grid = griddata(points, P, (grid_x, grid_y), method="linear", fill_value = P_fill)
+            P_grid = np.zeros_like(P_grid)
 
             # stack into (C, H, W) with C=3 (u, v, P channels)
             uv_grid = np.stack([u_grid, v_grid, P_grid], axis=0).astype(np.float32)  # (3, 64, 64)

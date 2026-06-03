@@ -12,8 +12,11 @@ U_STD  = 0.23277222
 V_MEAN = 0.0002897293
 V_STD  = 0.19554001
 
-P_MEAN = -0.03955434
-P_STD  = 0.3204666
+# P_MEAN = -0.03955434
+# P_STD  = 0.3204666
+
+P_MEAN = 0
+P_STD  = 0
 
 
 # dimention
@@ -33,7 +36,7 @@ GRID_SIZE  = 64
 PATCH_SIZE = 8
 PATCH_DIM  = (PATCH_SIZE * PATCH_SIZE * C) + FOURIER_DIMENSIONS # +64 because positional embedding was done in the dataset itself
                                                                 # tgt: (patch_row * patch_col, C * patch_h * patch_w + (2 * 2 * num_freq))
-D_MODEL    = 768
+D_MODEL    = 512
 
 # parameters
 N         = 6
