@@ -66,10 +66,14 @@ class CFD_Dataset(Dataset):
 
             points = np.stack([x, y], axis=1)  # (N, 3)
 
+            u_fill = float(np.nanmean(u))
+            v_fill = float(np.nanmean(v))
+            P_fill = float(np.nanmean(P))
+
             # interpolate u, v, P onto regular grid
-            u_grid = griddata(points, u, (grid_x, grid_y), method="linear", fill_value=0.0)
-            v_grid = griddata(points, v, (grid_x, grid_y), method="linear", fill_value=0.0)
-            P_grid = griddata(points, P, (grid_x, grid_y), method="linear", fill_value=0.0)
+            u_grid = griddata(points, u, (grid_x, grid_y), method="linear", fill_value = u_fill)
+            v_grid = griddata(points, v, (grid_x, grid_y), method="linear", fill_value = v_fill)
+            P_grid = griddata(points, P, (grid_x, grid_y), method="linear", fill_value = P_fill)
 
             # stack into (C, H, W) with C=3 (u, v, P channels)
             uv_grid = np.stack([u_grid, v_grid, P_grid], axis=0).astype(np.float32)  # (3, 64, 64)
@@ -83,15 +87,20 @@ class CFD_Dataset(Dataset):
 
             self.re_list.append(re_value)
             self.patches_list.append(uv_grid)
+
+        # Computing global stats from raw grids
+        all_u = np.concatenate([g[0].flatten() for g in self.patches_list])
+        all_v = np.concatenate([g[1].flatten() for g in self.patches_list])
+        all_P = np.concatenate([g[2].flatten() for g in self.patches_list])
+
+        self.u_mean, self.u_std = all_u.mean(), all_u.std()
+        self.v_mean, self.v_std = all_v.mean(), all_v.std()
+        self.P_mean, self.P_std = all_P.mean(), all_P.std()
+
         
         self.re_mean = np.mean(self.re_list)
         self.re_std  = np.std(self.re_list)
-        self.u_mean = np.mean(self.u_mean_list)
-        self.u_std  = np.mean(self.u_std_list)
-        self.v_mean = np.mean(self.v_mean_list)
-        self.v_std  = np.mean(self.v_std_list)
-        self.P_mean = np.mean(self.P_mean_list)
-        self.P_std  = np.mean(self.P_std_list)
+
 
         # postional embedding from file itself
         coords = []
@@ -106,9 +115,9 @@ class CFD_Dataset(Dataset):
         coords_tensor = fourier_features(cords = coords_tensor, num_freq = 16)   # (num_patches, C * 16 * 2)
 
         for i, uv_grid in enumerate(self.patches_list):
-            uv_grid[0] = (uv_grid[0] - self.u_mean) / (self.u_std + 1e-8)
-            uv_grid[1] = (uv_grid[1] - self.v_mean) / (self.v_std + 1e-8)
-            uv_grid[2] = (uv_grid[2] - self.P_mean) / (self.P_std + 1e-8)
+            uv_grid[0] = np.clip((uv_grid[0] - self.u_mean) / (self.u_std + 1e-8), -5, 5)
+            uv_grid[1] = np.clip((uv_grid[1] - self.v_mean) / (self.v_std + 1e-8), -5, 5)
+            uv_grid[2] = np.clip((uv_grid[2] - self.P_mean) / (self.P_std + 1e-8), -5, 5)
 
             uv_tensor = torch.tensor(uv_grid)
             patches = uv_tensor.unsqueeze(0)                                                        # (1, grid_size, grid_size), grid_size: actual size
@@ -136,14 +145,14 @@ if "__main__" == __name__:
     cfd_dataset = CFD_Dataset(root = "Data_with_P", patch_size = 16, grid_size = 64)
     dataloader  = DataLoader(cfd_dataset, batch_size = 1, shuffle = True)
 
-    print("mean:   ", cfd_dataset.re_mean)
-    print("std:    ", cfd_dataset.re_std)
-    print("u_mean: ", cfd_dataset.u_mean)
-    print("u_std:  ", cfd_dataset.u_std)
-    print("v_mean: ", cfd_dataset.v_mean)
-    print("v_std:  ", cfd_dataset.v_std)
-    print("P_mean: ", cfd_dataset.P_mean)
-    print("P_std:  ", cfd_dataset.P_std)
+    print("re mean: ", cfd_dataset.re_mean)
+    print("re std:  ", cfd_dataset.re_std)
+    print("u_mean:  ", cfd_dataset.u_mean)
+    print("u_std:   ", cfd_dataset.u_std)
+    print("v_mean:  ", cfd_dataset.v_mean)
+    print("v_std:   ", cfd_dataset.v_std)
+    print("P_mean:  ", cfd_dataset.P_mean)
+    print("P_std:   ", cfd_dataset.P_std)
 
     re, patches = next(iter(dataloader))
 
