@@ -115,9 +115,9 @@ class CFD_Dataset(Dataset):
         coords_tensor = fourier_features(cords = coords_tensor, num_freq = 16)   # (num_patches, C * 16 * 2)
 
         for i, uv_grid in enumerate(self.patches_list):
-            uv_grid[0] = np.clip((uv_grid[0] - self.u_mean) / (self.u_std + 1e-8), -5, 5)
-            uv_grid[1] = np.clip((uv_grid[1] - self.v_mean) / (self.v_std + 1e-8), -5, 5)
-            uv_grid[2] = np.clip((uv_grid[2] - self.P_mean) / (self.P_std + 1e-8), -5, 5)
+            uv_grid[0] = (uv_grid[0] - self.u_mean) / (self.u_std + 1e-8)
+            uv_grid[1] = (uv_grid[1] - self.v_mean) / (self.v_std + 1e-8)
+            uv_grid[2] = (uv_grid[2] - self.P_mean) / (self.P_std + 1e-8)
 
             uv_tensor = torch.tensor(uv_grid)
             patches = uv_tensor.unsqueeze(0)                                                        # (1, grid_size, grid_size), grid_size: actual size

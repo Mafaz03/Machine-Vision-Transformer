@@ -1,19 +1,19 @@
 import torch
 
 # dataset 
-RE_MEAN = 1175.7935384615384    # with P
-RE_STD  = 744.9444946064118     # with P
+RE_MEAN = 1191.50125            # with P
+RE_STD  = 739.8270885769103     # with P
 
 RE_MAX  = 2499.1                # with P
 
-U_MEAN = 0.008343593
-U_STD  = 0.23272848
+U_MEAN = 0.00834795
+U_STD  = 0.23277222
 
-V_MEAN = 0.00028657727
-V_STD  = 0.19424047
+V_MEAN = 0.0002897293
+V_STD  = 0.19554001
 
-P_MEAN = -0.02899779
-P_STD  = 1.1977241
+P_MEAN = -0.03955434
+P_STD  = 0.3204666
 
 
 # dimention
