@@ -485,31 +485,3 @@ def load_checkpoint(
 
     return checkpoint["epoch"]
 
-
-def greedy_decode(model, src, src_mask, max_len, patch_dim, device = "cpu"):
-    src = src.to(device)
-    src_mask = src_mask.to(device)
-    
-    B = src.shape[0]
-    # encode
-    memory = model.encode(src, src_mask)
-
-    ys = torch.zeros(B, 1, patch_dim).to(device)
-    # loop
-    for _ in range(max_len):
-        # decoding
-        tgt_mask = make_tgt_mask(ys).to("cpu")
-        out = model.decode(
-                memory,
-                src_mask,
-                ys,
-                tgt_mask
-            )
-        
-        # newest predicted patch
-        next_patch = out[:, -1:, :]
-
-        # append
-        ys = torch.cat([ys, next_patch], dim=1)
-
-    return ys[:, 1:, :]

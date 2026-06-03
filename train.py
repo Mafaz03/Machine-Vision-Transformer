@@ -14,6 +14,7 @@ from dataset_cfd import *
 from lr_scheduler import *
 
 import wandb
+import json
 
 
 def run_epoch(
@@ -76,8 +77,6 @@ def run_epoch(
 def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_freq = 16, device = "cpu"):
     # coords_tensor: [max_len, 2], where max_len: (grid_size // patch_size)**2
 
-    pos_dim = 4 * num_freq  # 32
-
     with torch.no_grad():
         src = src.to(device)
         src_mask = src_mask.to(device)
@@ -93,10 +92,10 @@ def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_f
             # coords_so_far = coords_tensor[:ys.shape[1]].unsqueeze(0).expand(B, -1, pos_dim).to(device) # [B, i, pos_dim]
             # ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                                    # [B, i, i + pos_dim]
 
-            start_coord = torch.zeros(1, pos_dim).to(device)
+            start_coord = torch.zeros(1, FOURIER_DIMENSIONS).to(device)
             coords_so_far = coords_tensor[:ys.shape[1]-1].to(device)
             coords_so_far = torch.cat([start_coord, coords_so_far], dim=0)                              # (seq_len (i), pos_dim)
-            coords_so_far = coords_so_far.unsqueeze(0).expand(B, -1, pos_dim)                           # [B, i, pos_dim]
+            coords_so_far = coords_so_far.unsqueeze(0).expand(B, -1, FOURIER_DIMENSIONS)                           # [B, i, pos_dim]
             ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                                     # [B, i, i + pos_dim]
 
             # decoding
@@ -110,7 +109,7 @@ def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_f
 
             # newest predicted patch
             # next_patch = out[:, -1:, :]
-            next_patch = out[:, -1:, :-pos_dim]  # strip coord dims from output
+            next_patch = out[:, -1:, :-FOURIER_DIMENSIONS]  # strip coord dims from output
 
             # append
             ys = torch.cat([ys, next_patch], dim=1)
@@ -162,25 +161,9 @@ def load_checkpoint(
 
     return checkpoint["epoch"]
 
-# class CFDLoss(nn.Module):
-#     def __init__(self, grad_weight=0.1):
-#         super().__init__()
-#         self.mse = nn.MSELoss()
-#         self.grad_weight = grad_weight
-
-#     def gradient_loss(self, pred, target):
-#         # pred, target: (B, seq, patch_dim)
-#         pred_grad   = torch.diff(pred,   dim=1)
-#         target_grad = torch.diff(target, dim=1)
-#         return self.mse(pred_grad, target_grad)
-
-#     def forward(self, pred, target):
-#         mse_loss  = self.mse(pred, target)
-#         grad_loss = self.gradient_loss(pred, target)
-#         return mse_loss + self.grad_weight * grad_loss
         
 class CFDLoss(nn.Module):
-    def __init__(self, grad_weight=0.1, div_weight=0.1, patch_size=8, grid_size=64, channels=2, num_freq = 16):
+    def __init__(self, grad_weight=0.1, div_weight=0.1, patch_size=8, grid_size=64, channels=C, num_freq = 16):
         super().__init__()
         self.mse         = nn.MSELoss()
         self.grad_weight = grad_weight
@@ -238,9 +221,9 @@ class CFDLoss(nn.Module):
 
 
     def forward(self, pred, target, re_norm):
-        pos_dim = 4 * self.num_freq  # 32
-        pred = pred[:, :, :-pos_dim]          # removing pos embedding
-        target = target[:, :, :-pos_dim]      # removing pos embedding
+        
+        pred = pred[:, :, :-FOURIER_DIMENSIONS]          # removing pos embedding
+        target = target[:, :, :-FOURIER_DIMENSIONS]      # removing pos embedding
         B, seq_len, patch_dim = pred.shape     
         p = self.grid_size // self.patch_size  # 16
         
@@ -268,34 +251,17 @@ class CFDLoss(nn.Module):
     
 def run_training_experiment() -> None:
 
-    # config = {
-    #     "grid_size"        : 64,
-    #     "patch_size"       : 4,
-    #     "patch_dim"        : 4 * 4 * 2,
-    #     "d_model"          : 512,
-    #     "N"                : 10,
-    #     "num_heads"        : 32,
-    #     "d_ff"             : 1024,
-    #     "dropout"          : 0.1,
-    #     "train_batch_size" : 2,
-    #     "test_batch_size"  : 10,
-    #     "epochs"           : 80,
-    #     "device"           : 'cuda' if torch.cuda.is_available() else 'cpu',
-    #     'save_every'       : 4
-    # }
-
     # small
     config = {
         "grid_size"        : 64,
         "patch_size"       : 8,    
-        "patch_dim"        : (8*8*2) + (2 * 2 * 16), # +64 because positional embedding was done in the dataset itself
+        "patch_dim"        : (8*8*C) + FOURIER_DIMENSIONS, # +64 because positional embedding was done in the dataset itself
+                                                           # tgt: (patch_row * patch_col, C * patch_h * patch_w + (2 * 2 * num_freq))
         "d_model"          : 512,
         "N"                : 6,
         "num_heads"        : 8,    
         "d_ff"             : 1024,
         "dropout"          : 0.01,
-        "train_batch_size" : 8,
-        "test_batch_size"  : 8,
         "epochs"           : 150,
         "device"           : 'cuda' if torch.cuda.is_available() else 'cpu',
         "save_every"       : 20
@@ -312,7 +278,7 @@ def run_training_experiment() -> None:
     )
 
     # split sizes
-    train_size = int(0.85 * len(cfd_dataset))
+    train_size = int(TRAIN_SPLIT * len(cfd_dataset))
     test_size  = len(cfd_dataset) - train_size
 
     # random split
@@ -324,13 +290,13 @@ def run_training_experiment() -> None:
     # dataloaders
     train_dataloader = DataLoader(
         train_dataset,
-        batch_size=config["train_batch_size"],
+        batch_size=TRAIN_BATCH_SIZE,
         shuffle=True
     )
 
     test_dataloader = DataLoader(
         test_dataset,
-        batch_size=config["test_batch_size"],
+        batch_size=TEST_BATCH_SIZE,
         shuffle=False
     )
 
@@ -342,12 +308,12 @@ def run_training_experiment() -> None:
     for src, _ in test_dataloader:
         test_re.extend([i.item() for i in (src * cfd_dataset.re_std) + cfd_dataset.re_mean])
 
-    import json
+    
     data = {"train_re": train_re, "test_re": test_re}
     with open("train_test_re.json", "w", encoding="utf-8") as file:
         json.dump(data, file)
 
-        
+
     # 1. Init W&B
     wandb.init(project="Machine Visiosn Transformer", config = config)
 
@@ -372,7 +338,7 @@ def run_training_experiment() -> None:
     loss_fn = CFDLoss(patch_size = config['patch_size'], grid_size = config['grid_size'])
 
     # 8. Training loop:
-    for epoch in range(config['epochs']):
+    for epoch in range(EPOCHS):
         transformer.train()
         train_loss = run_epoch(train_dataloader, transformer, loss_fn,
                         optimizer, scheduler, 1, is_train=True, device=config['device'])
@@ -382,7 +348,7 @@ def run_training_experiment() -> None:
         wandb.log({'epoch': epoch, 'train_loss': train_loss, 'test_loss': test_loss})
         print(f"EPOCH: {epoch} => Train loss: {train_loss:.4f} | Test loss: {test_loss:.4f}")
         
-        if (epoch % config['save_every'] == 0) or (epoch == config["epochs"]-1):
+        if (epoch % config['save_every'] == 0) or (epoch == EPOCHS-1):
             print(f"Saving at epoch: {epoch}")
             save_checkpoint(transformer, optimizer, scheduler, epoch)
     
