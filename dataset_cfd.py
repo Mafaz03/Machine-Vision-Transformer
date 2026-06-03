@@ -8,7 +8,7 @@ import pandas as pd
 from scipy.interpolate import griddata
 import os
 from config import *
-
+from tqdm import tqdm
 
 def fourier_features(cords: torch.tensor, num_freq = 8):
     # [num_patches, 2] -> [num_patches, num_freq * 2]
@@ -44,7 +44,7 @@ class CFD_Dataset(Dataset):
         lin = np.linspace(0, 1, grid_size)
         grid_x, grid_y = np.meshgrid(lin, lin)  # (grid_size, grid_size)
 
-        for file in files:
+        for file in tqdm(files):
             if not file.endswith(".csv"):
                 continue
 
@@ -74,7 +74,7 @@ class CFD_Dataset(Dataset):
             u_grid = griddata(points, u, (grid_x, grid_y), method="linear", fill_value = u_fill)
             v_grid = griddata(points, v, (grid_x, grid_y), method="linear", fill_value = v_fill)
             P_grid = griddata(points, P, (grid_x, grid_y), method="linear", fill_value = P_fill)
-            P_grid = np.zeros_like(P_grid)
+            # P_grid = np.zeros_like(P_grid)
 
             # stack into (C, H, W) with C=3 (u, v, P channels)
             uv_grid = np.stack([u_grid, v_grid, P_grid], axis=0).astype(np.float32)  # (3, 64, 64)
