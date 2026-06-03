@@ -426,7 +426,7 @@ class Transformer(nn.Module):
         memory = re_expanded.view(B, 8, self.d_model)                       # (B, 8, d_model)
 
         self.memory = memory
-        return self.memory
+        return self.memory                                                  # (B, 8, d_model)
   
         # src_pos     = self.positional_encodings(src_dk)                     # [B, 1, d_model]
         # self.memory = self.encoder(src_pos, src_mask)                       # [B, 1, d_model]
@@ -441,8 +441,6 @@ class Transformer(nn.Module):
         tgt_mask: torch.Tensor,
     ) -> torch.Tensor:
         """
-        Run the full decoder stack and project to vocabulary logits.
-
         Args:
             memory   : Encoder output,  shape [batch, 1, d_model]
             src_mask : shape [batch, 1, 1, src_len]

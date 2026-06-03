@@ -1,3 +1,5 @@
+import torch
+
 # dataset 
 RE_MEAN = 1175.7935384615384    # with P
 RE_STD  = 744.9444946064118     # with P
@@ -20,13 +22,25 @@ FOURIER_DIMENSIONS = 2 * 2 * FOURIER_FEATURES
 C                  = 3 # u, v, P
 
 
-
-# PATCH_SIZE       = 
-
-
 # splits and epochs
 TRAIN_SPLIT      = 0.85
 TRAIN_BATCH_SIZE = 8
 TEST_BATCH_SIZE  = 8
+EPOCHS           = 500
 
-EPOCHS           = 150
+# dimensions
+GRID_SIZE  = 64
+PATCH_SIZE = 8
+PATCH_DIM  = (PATCH_SIZE * PATCH_SIZE * C) + FOURIER_DIMENSIONS # +64 because positional embedding was done in the dataset itself
+                                                                # tgt: (patch_row * patch_col, C * patch_h * patch_w + (2 * 2 * num_freq))
+D_MODEL    = 512
+
+# parameters
+N         = 10
+NUM_HEADS = 8
+D_FF      = 1024
+DROPOUT   = 0.01
+
+# extra
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+SAVE_EVERY = 20

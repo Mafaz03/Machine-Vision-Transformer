@@ -251,29 +251,14 @@ class CFDLoss(nn.Module):
     
 def run_training_experiment() -> None:
 
-    # small
-    config = {
-        "grid_size"        : 64,
-        "patch_size"       : 8,    
-        "patch_dim"        : (8*8*C) + FOURIER_DIMENSIONS, # +64 because positional embedding was done in the dataset itself
-                                                           # tgt: (patch_row * patch_col, C * patch_h * patch_w + (2 * 2 * num_freq))
-        "d_model"          : 512,
-        "N"                : 6,
-        "num_heads"        : 8,    
-        "d_ff"             : 1024,
-        "dropout"          : 0.01,
-        "epochs"           : 150,
-        "device"           : 'cuda' if torch.cuda.is_available() else 'cpu',
-        "save_every"       : 20
-    }
     # 2. Build dataset from dataset.py
     # 3. Create DataLoaders for train / val 
 
 
     cfd_dataset = CFD_Dataset(
         root="Data_with_P",
-        patch_size = config["patch_size"], 
-        grid_size = config["grid_size"]
+        patch_size = GRID_SIZE, 
+        grid_size  = GRID_SIZE
 
     )
 
@@ -315,40 +300,41 @@ def run_training_experiment() -> None:
 
 
     # 1. Init W&B
-    wandb.init(project="Machine Visiosn Transformer", config = config)
+    wandb.init(project="Machine Visiosn Transformer")
 
     # 4. Instantiate Transformer with hyperparameters from config
     transformer = Transformer(
-                              d_model        = config["d_model"], 
-                              N              = config["N"], 
-                              num_heads      = config["num_heads"], 
-                              d_ff           = config["d_ff"], 
-                              patch_dim      = config['patch_dim'])
+                              d_model        = D_MODEL, 
+                              N              = N, 
+                              num_heads      = NUM_HEADS, 
+                              d_ff           = NUM_HEADS, 
+                              patch_dim      = PATCH_DIM,
+                              dropout        = DROPOUT)
     
-    transformer = transformer.to(config["device"])
+    transformer = transformer.to(DEVICE)
 
     # 5. Instantiate Adam optimizer (β1=0.9, β2=0.98, ε=1e-9)
     optimizer = optim.Adam(transformer.parameters(), betas = [0.9, 0.98], lr=1e-4)
 
     # 6. Instantiate NoamScheduler(optimizer, d_model, warmup_steps=4000)
-    scheduler = NoamScheduler(optimizer, d_model = config["d_model"], warmup_steps = 5000, const_lr=True)
+    scheduler = NoamScheduler(optimizer, d_model = D_MODEL, warmup_steps = 5000, const_lr=True)
 
     # 7. Instantiate MSE Loss or smthing idk
     # loss_fn = torch.nn.MSELoss()
-    loss_fn = CFDLoss(patch_size = config['patch_size'], grid_size = config['grid_size'])
+    loss_fn = CFDLoss(patch_size = GRID_SIZE, grid_size = GRID_SIZE)
 
     # 8. Training loop:
     for epoch in range(EPOCHS):
         transformer.train()
         train_loss = run_epoch(train_dataloader, transformer, loss_fn,
-                        optimizer, scheduler, 1, is_train=True, device=config['device'])
+                        optimizer, scheduler, 1, is_train=True, device=DEVICE)
         transformer.eval()
         test_loss = run_epoch(test_dataloader, transformer, loss_fn,
-                        optimizer, scheduler, 1, is_train=False, device=config['device'])
+                        optimizer, scheduler, 1, is_train=False, device=DEVICE)
         wandb.log({'epoch': epoch, 'train_loss': train_loss, 'test_loss': test_loss})
         print(f"EPOCH: {epoch} => Train loss: {train_loss:.4f} | Test loss: {test_loss:.4f}")
         
-        if (epoch % config['save_every'] == 0) or (epoch == EPOCHS-1):
+        if (epoch % SAVE_EVERY == 0) or (epoch == EPOCHS-1):
             print(f"Saving at epoch: {epoch}")
             save_checkpoint(transformer, optimizer, scheduler, epoch)
     
