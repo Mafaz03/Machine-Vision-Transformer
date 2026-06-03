@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from config import *
 
 def scaled_dot_product_attention(
     Q: torch.Tensor,
@@ -394,7 +395,7 @@ class Transformer(nn.Module):
         decoder_layer = DecoderLayer(d_model = d_model, num_heads = num_heads, d_ff = d_ff, dropout = dropout)
         self.decoder  = Decoder(layer = decoder_layer, N = N)
         self.patch_projection = nn.Linear(patch_dim, d_model)
-        self.fc_out           = nn.Linear(d_model, patch_dim)
+        self.fc_out           = nn.Linear(d_model, patch_dim-FOURIER_DIMENSIONS)
         
         # self.src_vocab_size = src_vocab_size
 

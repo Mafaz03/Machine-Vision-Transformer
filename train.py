@@ -109,7 +109,7 @@ def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_f
 
             # newest predicted patch
             # next_patch = out[:, -1:, :]
-            next_patch = out[:, -1:, :-FOURIER_DIMENSIONS]  # strip coord dims from output
+            next_patch = out[:, -1:, :]  # strip coord dims from output
 
             # append
             ys = torch.cat([ys, next_patch], dim=1)
@@ -222,8 +222,8 @@ class CFDLoss(nn.Module):
 
     def forward(self, pred, target, re_norm):
         
-        pred = pred[:, :, :-FOURIER_DIMENSIONS]          # removing pos embedding
-        target = target[:, :, :-FOURIER_DIMENSIONS]      # removing pos embedding
+        pred = pred[:, :, :]          # removing pos embedding
+        target = target[:, :, :]      # removing pos embedding
         B, seq_len, patch_dim = pred.shape     
         p = self.grid_size // self.patch_size  # 16
         
