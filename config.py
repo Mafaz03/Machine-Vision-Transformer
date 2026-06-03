@@ -36,11 +36,11 @@ GRID_SIZE  = 64
 PATCH_SIZE = 8
 PATCH_DIM  = (PATCH_SIZE * PATCH_SIZE * C) + FOURIER_DIMENSIONS # +64 because positional embedding was done in the dataset itself
                                                                 # tgt: (patch_row * patch_col, C * patch_h * patch_w + (2 * 2 * num_freq))
-D_MODEL    = 1024
+D_MODEL    = 512
 
 # parameters
-N         = 15 # 6
-NUM_HEADS = 16 # 8
+N         = 6 # 6
+NUM_HEADS = 8 # 8
 D_FF      = 1024
 DROPOUT   = 0.01
 
