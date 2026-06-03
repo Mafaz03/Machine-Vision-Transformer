@@ -34,8 +34,8 @@ class CFD_Dataset(Dataset):
         self.u_std_list  = []
         self.v_mean_list = []
         self.v_std_list  = []
-        self.P_mean_list = []
-        self.P_std_list  = []
+        if C == 3: self.P_mean_list = []
+        if C == 3: self.P_std_list  = []
 
         
         files = os.listdir(root)
@@ -58,7 +58,7 @@ class CFD_Dataset(Dataset):
             y = df["y"].values.astype(np.float32)
             u = df["u (m/s)"].values.astype(np.float32)
             v = df["v (m/s)"].values.astype(np.float32)
-            P = df["p (Pa)"].values.astype(np.float32)
+            if C == 3: P = df["p (Pa)"].values.astype(np.float32)
 
             # normalize x, y to [0, 1] for consistent interpolation
             x = (x - x.min()) / (x.max() - x.min() + 1e-8)
@@ -68,23 +68,25 @@ class CFD_Dataset(Dataset):
 
             u_fill = float(np.nanmean(u))
             v_fill = float(np.nanmean(v))
-            P_fill = float(np.nanmean(P))
+            if C == 3: P_fill = float(np.nanmean(P))
 
             # interpolate u, v, P onto regular grid
             u_grid = griddata(points, u, (grid_x, grid_y), method="linear", fill_value = u_fill)
             v_grid = griddata(points, v, (grid_x, grid_y), method="linear", fill_value = v_fill)
-            P_grid = griddata(points, P, (grid_x, grid_y), method="linear", fill_value = P_fill)
+            if C == 3: P_grid = griddata(points, P, (grid_x, grid_y), method="linear", fill_value = P_fill)
             # P_grid = np.zeros_like(P_grid)
 
             # stack into (C, H, W) with C=3 (u, v, P channels)
-            uv_grid = np.stack([u_grid, v_grid, P_grid], axis=0).astype(np.float32)  # (3, 64, 64)
+            if C == 3: uv_grid = np.stack([u_grid, v_grid, P_grid], axis=0).astype(np.float32)  # (3, 64, 64)
+            if C == 2: uv_grid = np.stack([u_grid, v_grid], axis=0).astype(np.float32)  # (3, 64, 64)
 
             self.u_mean_list.append(uv_grid[0].mean())
             self.u_std_list.append(uv_grid[0].std())
             self.v_mean_list.append(uv_grid[1].mean())
             self.v_std_list.append(uv_grid[1].std())
-            self.P_mean_list.append(uv_grid[2].mean())
-            self.P_std_list.append(uv_grid[2].std())
+            if C == 3: 
+                self.P_mean_list.append(uv_grid[2].mean())
+                self.P_std_list.append(uv_grid[2].std())
 
             self.re_list.append(re_value)
             self.patches_list.append(uv_grid)
@@ -96,7 +98,7 @@ class CFD_Dataset(Dataset):
 
         self.u_mean, self.u_std = all_u.mean(), all_u.std()
         self.v_mean, self.v_std = all_v.mean(), all_v.std()
-        self.P_mean, self.P_std = all_P.mean(), all_P.std()
+        if C == 3: self.P_mean, self.P_std = all_P.mean(), all_P.std()
 
         
         self.re_mean = np.mean(self.re_list)
@@ -118,7 +120,7 @@ class CFD_Dataset(Dataset):
         for i, uv_grid in enumerate(self.patches_list):
             uv_grid[0] = (uv_grid[0] - self.u_mean) / (self.u_std + 1e-8)
             uv_grid[1] = (uv_grid[1] - self.v_mean) / (self.v_std + 1e-8)
-            uv_grid[2] = (uv_grid[2] - self.P_mean) / (self.P_std + 1e-8)
+            if C == 3: uv_grid[2] = (uv_grid[2] - self.P_mean) / (self.P_std + 1e-8)
 
             uv_tensor = torch.tensor(uv_grid)
             patches = uv_tensor.unsqueeze(0)                                                        # (1, grid_size, grid_size), grid_size: actual size
@@ -181,8 +183,8 @@ if "__main__" == __name__:
     axes[0].set_title("u velocity")
     axes[1].contourf(x_grid, y_grid, v, levels=50, cmap="viridis")
     axes[1].set_title("v velocity")
-    axes[2].contourf(x_grid, y_grid, P, levels=50, cmap="viridis")
-    axes[2].set_title("Pressure")
+    if C == 3: axes[2].contourf(x_grid, y_grid, P, levels=50, cmap="viridis")
+    if C == 3: axes[2].set_title("Pressure")
     plt.suptitle(f"Re (normalised): {re.item()}")
     plt.tight_layout()
     plt.show()

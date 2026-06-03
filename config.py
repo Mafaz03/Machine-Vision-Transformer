@@ -22,14 +22,15 @@ P_STD  = 0.3204666
 # dimention
 FOURIER_FEATURES   = 16
 FOURIER_DIMENSIONS = 2 * 2 * FOURIER_FEATURES
-C                  = 3 # u, v, P
+# C                  = 3 # u, v, P
+C                  = 2 # u, v, P
 
 
 # splits and epochs
 TRAIN_SPLIT      = 0.80
 TRAIN_BATCH_SIZE = 8
 TEST_BATCH_SIZE  = 8
-EPOCHS           = 2_000
+EPOCHS           = 500
 
 # dimensions
 GRID_SIZE  = 64
