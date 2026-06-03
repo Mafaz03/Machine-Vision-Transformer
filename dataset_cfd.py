@@ -13,7 +13,7 @@ from config import *
 def fourier_features(cords: torch.tensor, num_freq = 8):
     # [num_patches, 2] -> [num_patches, C * num_freq * 2]
     freqs = 2 ** torch.linspace(0, num_freq - 1, num_freq)                   # [num_freqs]
-    angles = (cords.unsqueeze(-1) * freqs * C * torch.pi)                    # [num_patches, 2, num_freq]
+    angles = (cords.unsqueeze(-1) * freqs  * torch.pi)                       # [num_patches, 2, num_freq]
     encoded = torch.cat([torch.sin(angles), torch.cos(angles)], dim = -1)    # [num_patches, 2, num_freq * 2]
     return encoded.view(cords.shape[0], -1)                                  # [num_patches, 2 * num_freq * 2]
 
