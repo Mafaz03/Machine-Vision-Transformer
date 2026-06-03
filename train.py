@@ -307,7 +307,7 @@ def run_training_experiment() -> None:
                               d_model        = D_MODEL, 
                               N              = N, 
                               num_heads      = NUM_HEADS, 
-                              d_ff           = NUM_HEADS, 
+                              d_ff           = D_FF, 
                               patch_dim      = PATCH_DIM,
                               dropout        = DROPOUT)
     
