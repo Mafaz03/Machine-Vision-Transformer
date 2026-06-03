@@ -11,7 +11,7 @@ from config import *
 
 
 def fourier_features(cords: torch.tensor, num_freq = 8):
-    # [num_patches, 2] -> [num_patches, C * num_freq * 2]
+    # [num_patches, 2] -> [num_patches, num_freq * 2]
     freqs = 2 ** torch.linspace(0, num_freq - 1, num_freq)                   # [num_freqs]
     angles = (cords.unsqueeze(-1) * freqs  * torch.pi)                       # [num_patches, 2, num_freq]
     encoded = torch.cat([torch.sin(angles), torch.cos(angles)], dim = -1)    # [num_patches, 2, num_freq * 2]
@@ -63,7 +63,6 @@ class CFD_Dataset(Dataset):
             # normalize x, y to [0, 1] for consistent interpolation
             x = (x - x.min()) / (x.max() - x.min() + 1e-8)
             y = (y - y.min()) / (y.max() - y.min() + 1e-8)
-            P = (P - P.min()) / (P.max() - P.min() + 1e-8)
 
             points = np.stack([x, y], axis=1)  # (N, 3)
 
@@ -115,7 +114,7 @@ class CFD_Dataset(Dataset):
             patches = uv_tensor.unsqueeze(0)                                                        # (1, grid_size, grid_size), grid_size: actual size
             patches = patches.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)   # (1, C, patch_row, patch_col, patch_h, patch_w)
             patches = patches.permute(0, 2, 3, 1, 4, 5)                                             # (1, patch_row, patch_col, C, patch_h, patch_w)
-            _, pr, pc, C, ph, pw = patches.shape
+            _, pr, pc, num_ch, ph, pw = patches.shape
             patches = patches.contiguous().view(pr * pc, C * ph * pw)                               # patches: (patch_row * patch_col, C * patch_h * patch_w)
             patches = torch.cat([patches, coords_tensor], dim=-1)                                   # patches: (patch_row * patch_col, C * patch_h * patch_w + (2 * 2 * num_freq))
             self.patches_list[i] = patches
