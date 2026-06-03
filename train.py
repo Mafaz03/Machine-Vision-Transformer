@@ -257,7 +257,7 @@ def run_training_experiment() -> None:
 
     cfd_dataset = CFD_Dataset(
         root="Data_with_P",
-        patch_size = GRID_SIZE, 
+        patch_size = PATCH_SIZE, 
         grid_size  = GRID_SIZE
 
     )
