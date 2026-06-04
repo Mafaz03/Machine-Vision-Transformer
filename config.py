@@ -27,8 +27,8 @@ C                  = 3 # u, v, P
 
 # splits and epochs
 TRAIN_SPLIT      = 0.80
-TRAIN_BATCH_SIZE = 8
-TEST_BATCH_SIZE  = 8
+TRAIN_BATCH_SIZE = 15
+TEST_BATCH_SIZE  = 15
 EPOCHS           = 500
 
 # dimensions
