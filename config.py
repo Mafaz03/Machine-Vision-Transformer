@@ -26,20 +26,20 @@ C                  = 3 # u, v, P
 
 
 # splits and epochs
-TRAIN_SPLIT      = 0.80
+TRAIN_SPLIT      = 0.85
 TRAIN_BATCH_SIZE = 8
 TEST_BATCH_SIZE  = 8
-EPOCHS           = 1_000
+EPOCHS           = 500
 
 # dimensions
 GRID_SIZE  = 64
 PATCH_SIZE = 8
 PATCH_DIM  = (PATCH_SIZE * PATCH_SIZE * C) + FOURIER_DIMENSIONS # +64 because positional embedding was done in the dataset itself
                                                                 # tgt: (patch_row * patch_col, C * patch_h * patch_w + (2 * 2 * num_freq))
-D_MODEL    = 768
+D_MODEL    = 512
 
 # parameters
-N         = 6 # 6
+N         = 10 # 6
 NUM_HEADS = 8 # 8
 D_FF      = 1024
 DROPOUT   = 0.01
