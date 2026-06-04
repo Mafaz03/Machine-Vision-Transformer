@@ -249,7 +249,7 @@ class CFDLoss(nn.Module):
         # return (1 * mse_loss * weights.to(pred.device)).mean()# + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
         u_loss = self.mse(pred_field[:, 0, :, :], target_field[:,0, :, :])
         v_loss = self.mse(pred_field[:, 1, :, :], target_field[:,1, :, :])
-        p_loss = self.mse(pred_field[:, 2, :, :], target_field[:,2, :, :])
+        if C == 3: p_loss = self.mse(pred_field[:, 2, :, :], target_field[:,2, :, :])
         # return u_loss + v_loss + 0.01 * p_loss
         return (1 * mse_loss)# + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
     
