@@ -94,7 +94,7 @@ class CFD_Dataset(Dataset):
         # Computing global stats from raw grids
         all_u = np.concatenate([g[0].flatten() for g in self.patches_list])
         all_v = np.concatenate([g[1].flatten() for g in self.patches_list])
-        all_P = np.concatenate([g[2].flatten() for g in self.patches_list])
+        if C == 3: all_P = np.concatenate([g[2].flatten() for g in self.patches_list])
 
         self.u_mean, self.u_std = all_u.mean(), all_u.std()
         self.v_mean, self.v_std = all_v.mean(), all_v.std()
@@ -154,8 +154,9 @@ if "__main__" == __name__:
     print("u_std:   ", cfd_dataset.u_std)
     print("v_mean:  ", cfd_dataset.v_mean)
     print("v_std:   ", cfd_dataset.v_std)
-    print("P_mean:  ", cfd_dataset.P_mean)
-    print("P_std:   ", cfd_dataset.P_std)
+    if C == 3: 
+        print("P_mean:  ", cfd_dataset.P_mean)
+        print("P_std:   ", cfd_dataset.P_std)
 
     re, patches = next(iter(dataloader))
 
