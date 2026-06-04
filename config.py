@@ -22,8 +22,7 @@ P_STD  = 0.3204666
 # dimention
 FOURIER_FEATURES   = 16
 FOURIER_DIMENSIONS = 2 * 2 * FOURIER_FEATURES
-# C                  = 3 # u, v, P
-C                  = 2 # u, v, P
+C                  = 3 # u, v, P
 
 
 # splits and epochs
