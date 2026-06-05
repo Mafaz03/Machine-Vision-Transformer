@@ -115,7 +115,7 @@ class CFD_Dataset(Dataset):
                 coords.append([cx, cy])
 
         coords_tensor = torch.tensor(coords, dtype=torch.float32)                # (num_patches, C)
-        coords_tensor = fourier_features(cords = coords_tensor, num_freq = 16)   # (num_patches, C * 16 * 2)
+        coords_tensor = fourier_features(cords = coords_tensor, num_freq = FOURIER_FEATURES)   # (num_patches, C * 16 * 2)
 
         for i, uv_grid in enumerate(self.patches_list):
             uv_grid[0] = (uv_grid[0] - self.u_mean) / (self.u_std + 1e-8)
