@@ -39,7 +39,7 @@ PATCH_DIM  = (PATCH_SIZE * PATCH_SIZE * C) + FOURIER_DIMENSIONS # +64 because po
 D_MODEL    = 512
 
 # parameters
-N         = 10 # 6
+N         = 6 # 6
 NUM_HEADS = 8 # 8
 D_FF      = 1024
 DROPOUT   = 0.01
