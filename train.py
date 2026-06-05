@@ -163,7 +163,7 @@ def load_checkpoint(
 
         
 class CFDLoss(nn.Module):
-    def __init__(self, grad_weight=0.1, div_weight=0.1, patch_size=8, grid_size=64, channels=C, num_freq = 16):
+    def __init__(self, grad_weight=0.1, div_weight=0.1, patch_size=8, grid_size=64, channels=C, num_freq = FOURIER_FEATURES):
         super().__init__()
         self.mse         = nn.MSELoss()
         self.grad_weight = grad_weight
