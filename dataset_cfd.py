@@ -161,7 +161,7 @@ if "__main__" == __name__:
     re, patches = next(iter(dataloader))
 
     print("src:", re.shape)                                # (B, 1)
-    print("tgt:", patches.shape)                           # (B, 16, 512 + (2 * C * 16))
+    print("tgt:", patches.shape)                           # (B, 16, 512 + (4 * 16))
     patches = patches[:, : , :-(2 * 2 * FOURIER_FEATURES)] # (B, 16, 512)
     print("tgt:", patches.shape)       # (B, 16, 512)      -- 16 patches, 2*16*16=512 patch_dim
     
