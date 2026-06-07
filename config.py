@@ -20,7 +20,7 @@ P_STD  = 0.3204666
 
 
 # dimention
-FOURIER_FEATURES   = 8
+FOURIER_FEATURES   = 4
 FOURIER_DIMENSIONS = 2 * 2 * FOURIER_FEATURES
 C                  = 3 # u, v, P
 
