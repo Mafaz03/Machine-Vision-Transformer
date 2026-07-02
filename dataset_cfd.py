@@ -34,6 +34,8 @@ class CFD_Dataset(Dataset):
         self.u_std_list  = []
         self.v_mean_list = []
         self.v_std_list  = []
+        self.mask_list   = []
+
         if C == 3: self.P_mean_list = []
         if C == 3: self.P_std_list  = []
 
@@ -61,8 +63,15 @@ class CFD_Dataset(Dataset):
             if C == 3: P = df["p (Pa)"].values.astype(np.float32)
 
             # normalize x, y to [0, 1] for consistent interpolation
-            x = (x - x.min()) / (x.max() - x.min() + 1e-8)
-            y = (y - y.min()) / (y.max() - y.min() + 1e-8)
+            # x = (x - x.min()) / (x.max() - x.min() + 1e-8)
+            # y = (y - y.min()) / (y.max() - y.min() + 1e-8)
+
+            # WARNING: assuming length is always greater than height
+            L = x.max() - x.min()
+            x = (x - x.min()) / L
+            height = (y.max() - y.min()) / L
+            offset = (1 - height)/2
+            y = (y - y.min()) / L + offset
 
             points = np.stack([x, y], axis=1)  # (N, 3)
 
@@ -71,14 +80,27 @@ class CFD_Dataset(Dataset):
             if C == 3: P_fill = float(np.nanmean(P))
 
             # interpolate u, v, P onto regular grid
-            u_grid = griddata(points, u, (grid_x, grid_y), method="linear", fill_value = u_fill)
-            v_grid = griddata(points, v, (grid_x, grid_y), method="linear", fill_value = v_fill)
+            v_grid = griddata(points, v, (grid_x, grid_y), method="linear", fill_value = np.nan)#, fill_value = v_fill)
+            u_grid = griddata(points, u, (grid_x, grid_y), method="linear", fill_value = np.nan)#, fill_value = u_fill)
             if C == 3: P_grid = griddata(points, P, (grid_x, grid_y), method="linear", fill_value = P_fill)
             # P_grid = np.zeros_like(P_grid)
+
+            mask = ~np.isnan(u_grid)          # (H,W)
+            mask = mask.astype(np.float32)
+
+            self.mask_list.append(mask)
+
+            # replacing NaN with 0 but remembering NaN in mask
+            u_grid = np.nan_to_num(u_grid, nan=0.0)
+            v_grid = np.nan_to_num(v_grid, nan=0.0)
+            if C == 3: P_grid = np.nan_to_num(P_grid, nan=0.0)
+
 
             # stack into (C, H, W) with C=3 (u, v, P channels)
             if C == 3: uv_grid = np.stack([u_grid, v_grid, P_grid], axis=0).astype(np.float32)  # (3, 64, 64)
             if C == 2: uv_grid = np.stack([u_grid, v_grid], axis=0).astype(np.float32)  # (3, 64, 64)
+
+            
 
             self.u_mean_list.append(uv_grid[0].mean())
             self.u_std_list.append(uv_grid[0].std())
@@ -92,9 +114,12 @@ class CFD_Dataset(Dataset):
             self.patches_list.append(uv_grid)
 
         # Computing global stats from raw grids
-        all_u = np.concatenate([g[0].flatten() for g in self.patches_list])
-        all_v = np.concatenate([g[1].flatten() for g in self.patches_list])
-        if C == 3: all_P = np.concatenate([g[2].flatten() for g in self.patches_list])
+        all_u = np.concatenate([g[0][m == 1].flatten() for g, m in zip(self.patches_list, self.mask_list)])
+
+        all_v = np.concatenate([g[1][m == 1].flatten() for g, m in zip(self.patches_list, self.mask_list) ])
+
+        if C == 3:
+            all_P = np.concatenate([g[2][m == 1].flatten() for g, m in zip(self.patches_list, self.mask_list) ])
 
         self.u_mean, self.u_std = all_u.mean(), all_u.std()
         self.v_mean, self.v_std = all_v.mean(), all_v.std()
@@ -117,12 +142,14 @@ class CFD_Dataset(Dataset):
         coords_tensor = torch.tensor(coords, dtype=torch.float32)                # (num_patches, C)
         coords_tensor = fourier_features(cords = coords_tensor, num_freq = FOURIER_FEATURES)   # (num_patches, C * 16 * 2)
 
-        for i, uv_grid in enumerate(self.patches_list):
+        for i, (uv_grid, mask) in enumerate(zip(self.patches_list, self.mask_list)):
             uv_grid[0] = (uv_grid[0] - self.u_mean) / (self.u_std + 1e-8)
             uv_grid[1] = (uv_grid[1] - self.v_mean) / (self.v_std + 1e-8)
             if C == 3: uv_grid[2] = (uv_grid[2] - self.P_mean) / (self.P_std + 1e-8)
 
             uv_tensor = torch.tensor(uv_grid)
+            
+            
             patches = uv_tensor.unsqueeze(0)                                                        # (1, grid_size, grid_size), grid_size: actual size
             patches = patches.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)   # (1, C, patch_row, patch_col, patch_h, patch_w)
             patches = patches.permute(0, 2, 3, 1, 4, 5)                                             # (1, patch_row, patch_col, C, patch_h, patch_w)
@@ -130,6 +157,15 @@ class CFD_Dataset(Dataset):
             patches = patches.contiguous().view(pr * pc, C * ph * pw)                               # patches: (patch_row * patch_col, C * patch_h * patch_w)
             patches = torch.cat([patches, coords_tensor], dim=-1)                                   # patches: (patch_row * patch_col, C * patch_h * patch_w + (2 * 2 * num_freq))
             self.patches_list[i] = patches
+
+
+            mask_tensor  = torch.tensor(mask).unsqueeze(0)   # (1,H,W) 
+            mask_patches = mask_tensor.unsqueeze(0)          # (1,1,H,W) 
+            mask_patches = mask_patches.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)
+            mask_patches = mask_patches.permute(0,2,3,1,4,5)
+            _, pr, pc, _, ph, pw = mask_patches.shape
+            mask_patches = mask_patches.contiguous().view(pr*pc, ph*pw)
+            self.mask_list[i] = mask_patches
 
 
     def __len__(self): return len(self.re_list)
@@ -141,11 +177,12 @@ class CFD_Dataset(Dataset):
         re_norm = (re_value - self.re_mean) / self.re_std
         re_tensor = torch.tensor([re_norm], dtype=torch.float32)
 
-        return (re_tensor, self.patches_list[index])
+        return (re_tensor, self.patches_list[index], self.mask_list[index])
 
 
 if "__main__" == __name__:
-    cfd_dataset = CFD_Dataset(root = "Data_with_P", patch_size = 16, grid_size = 64)
+    # cfd_dataset = CFD_Dataset(root = "Data_with_P", patch_size = 16, grid_size = 64)
+    cfd_dataset = CFD_Dataset(root = "flow_past_cylinder_domain", patch_size = 16, grid_size = 64)
     dataloader  = DataLoader(cfd_dataset, batch_size = 1, shuffle = True)
 
     print("re mean: ", cfd_dataset.re_mean)
@@ -154,38 +191,52 @@ if "__main__" == __name__:
     print("u_std:   ", cfd_dataset.u_std)
     print("v_mean:  ", cfd_dataset.v_mean)
     print("v_std:   ", cfd_dataset.v_std)
+    
     if C == 3: 
         print("P_mean:  ", cfd_dataset.P_mean)
         print("P_std:   ", cfd_dataset.P_std)
 
-    re, patches = next(iter(dataloader))
+    re, patches, mask = next(iter(dataloader))
 
     print("src:", re.shape)                                # (B, 1)
     print("tgt:", patches.shape)                           # (B, 16, 512 + (4 * 16))
     patches = patches[:, : , :-(2 * 2 * FOURIER_FEATURES)] # (B, 16, 512)
     print("tgt:", patches.shape)       # (B, 16, 512)      -- 16 patches, 2*16*16=512 patch_dim
+    print("mask: ", mask.shape)
     
     patches = patches.squeeze(0) # remove B for now
+    mask = mask.squeeze(0) # remove B for now
     re = re.squeeze(0)           # remove B for now
 
     unrolled = patches.view(64//16, 64//16, C, 16, 16)              # (patch_row, patch_col, C, patch_h, patch_w)
     unrolled = unrolled.permute(2, 0, 3, 1, 4).contiguous()         # (C, patch_row, patch_h, patch_col, patch_w)
     unrolled = unrolled.view(C, 64, 64)                             # (C, grid_size, grid_size)
 
+    unrolled_mask = mask.view(64//16, 64//16, 1, 16, 16)                      # (patch_row, patch_col, C, patch_h, patch_w)
+    unrolled_mask = unrolled_mask.permute(2, 0, 3, 1, 4).contiguous()         # (C, patch_row, patch_h, patch_col, patch_w)
+    unrolled_mask = unrolled_mask.view(1, 64, 64)                             # (C, grid_size, grid_size)
+
     u = unrolled[0]                                                 # (grid_size, grid_size)
     v = unrolled[1]                                                 # (grid_size, grid_size)
     P = unrolled[2]                                                 # (grid_size, grid_size)
+    m = unrolled_mask[0]
 
     x_grid = torch.linspace(0, 1, 64)
     y_grid = torch.linspace(0, 1, 64)
 
-    fig, axes = plt.subplots(1, 3, figsize=(12, 5))
-    axes[0].contourf(x_grid, y_grid, u, levels=50, cmap="viridis")
+    fig, axes = plt.subplots(1, 4, figsize=(12, 5))
+    axes[0].contourf(x_grid, y_grid, u, levels=50, cmap="jet")
     axes[0].set_title("u velocity")
-    axes[1].contourf(x_grid, y_grid, v, levels=50, cmap="viridis")
+    axes[1].contourf(x_grid, y_grid, v, levels=50, cmap="jet")
     axes[1].set_title("v velocity")
-    if C == 3: axes[2].contourf(x_grid, y_grid, P, levels=50, cmap="viridis")
+
+    if C == 3: axes[2].contourf(x_grid, y_grid, P, levels=50, cmap="jet")
     if C == 3: axes[2].set_title("Pressure")
+
+    axes[3].contourf(x_grid, y_grid, m, levels=50, cmap="jet")
+    axes[3].set_title("Mask")
+
+
     plt.suptitle(f"Re (normalised): {re.item()}")
     plt.tight_layout()
     plt.show()

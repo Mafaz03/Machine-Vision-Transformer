@@ -33,7 +33,7 @@ def run_epoch(
     for _ in range(epoch_num):
         total_loss = 0
 
-        for src, tgt in tqdm(data_iter):
+        for src, tgt, domain_mask in tqdm(data_iter):
 
             src = src.to(device)
             tgt = tgt.to(device)
@@ -57,7 +57,7 @@ def run_epoch(
             logits = model(src, tgt_input, src_mask, tgt_mask)
 
             # loss
-            loss = loss_fn(logits, tgt_output, src)
+            loss = loss_fn(logits, tgt_output, src, domain_mask)
 
             if is_train:
                 optimizer.zero_grad()
@@ -184,43 +184,7 @@ class CFDLoss(nn.Module):
         patches = patches.permute(0, 3, 1, 4, 2, 5).contiguous()
         return patches.view(B, self.channels, spatial, spatial)
 
-    def spatial_gradient_loss(self, pred, target):
-        # pred, target: (B, C, H, W)
-        # x gradients
-        pred_dx   = torch.diff(pred,   dim=3)  # along W
-        target_dx = torch.diff(target, dim=3)
-        # y gradients
-        pred_dy   = torch.diff(pred,   dim=2)  # along H
-        target_dy = torch.diff(target, dim=2)
-
-        return self.mse(pred_dx, target_dx) + self.mse(pred_dy, target_dy)
-
-    def divergence_loss(self, pred):
-        # pred: (B, C, H, W) where C=0 is u, C=1 is v
-        # continuity equation: du/dx + dv/dy = 0
-        du_dx = torch.diff(pred[:, 0, :, :], dim=2)  # (B, H, W-1)
-        dv_dy = torch.diff(pred[:, 1, :, :], dim=1)  # (B, H-1, W)
-
-        # match sizes
-        min_h = min(du_dx.shape[1], dv_dy.shape[1])
-        min_w = min(du_dx.shape[2], dv_dy.shape[2])
-
-        divergence = du_dx[:, :min_h, :min_w] + dv_dy[:, :min_h, :min_w]
-        return divergence.pow(2).mean()  # should be 0 (best case)
-    
-    def maginitude_loss(self, pred, target):
-        # pred: (B, C, H, W) where C=0 is u, C=1 is v
-
-        u_pred = pred[:, 0, :, :]
-        v_pred = pred[:, 1, :, :]
-
-        u_target = target[:, 0, :, :]
-        v_target = target[:, 1, :, :]
-
-        return ((((u_pred**2) + (v_pred**2)) ** 0.5) - (((u_target**2) + (v_target**2)) ** 0.5)).mean().abs()
-
-
-    def forward(self, pred, target, re_norm):
+    def forward(self, pred, target, re_norm, domain_mask):
         
         pred = pred[:, :, :]          # removing pos embedding
         target = target[:, :, :]      # removing pos embedding
@@ -232,25 +196,30 @@ class CFDLoss(nn.Module):
         
         pred_field   = self.patches_to_field(pred[:, :complete, :])
         target_field = self.patches_to_field(target[:, :complete, :-FOURIER_DIMENSIONS])
+        domain_mask  = self.patches_to_mask(domain_mask)
+        domain_mask  = domain_mask.repeat(1, self.channels, 1, 1)
 
         
-        mse_loss  = self.mse(pred_field, target_field)
-        grad_loss = self.spatial_gradient_loss(pred_field, target_field)
-        div_loss  = self.divergence_loss(pred_field)  # physics constraint
-        mag_loss  = self.maginitude_loss(pred_field, target_field)  
+        # mse_loss  = self.mse(pred_field * domain_mask, target_field * domain_mask)
 
-
-        re_weight = 1 + torch.exp(-re_norm).mean() # smaller re batch -> more importance
-
+        sq = (pred_field - target_field).pow(2)
+        sq = sq * domain_mask
+        mse_loss = sq.sum() / domain_mask.sum()
         
-        mse_per_sample = ((pred_field - target_field)**2).mean(dim=[1,2,3])
-        mse_loss       = (mse_per_sample * re_weight.to(pred.device)).mean()
+        # re_weight = 1 + torch.exp(-re_norm).mean() # smaller re batch -> more importance
+        # mse_per_sample = ((pred_field - target_field)**2).mean(dim=[1,2,3])
+        # mse_loss       = (mse_per_sample * re_weight.to(pred.device)).mean()
+
+        # mask = mask.float()
+
+        # loss = ((pred - target)**2 * mask).sum() / mask.sum()
 
         # return (1 * mse_loss * weights.to(pred.device)).mean()# + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
         # u_loss = self.mse(pred_field[:, 0, :, :], target_field[:,0, :, :])
         # v_loss = self.mse(pred_field[:, 1, :, :], target_field[:,1, :, :])
         # if C == 3: p_loss = self.mse(pred_field[:, 2, :, :], target_field[:,2, :, :])
         # return u_loss + v_loss + 0.01 * p_loss
+
         return (1 * mse_loss)# + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
     
 def run_training_experiment() -> None:
@@ -260,7 +229,8 @@ def run_training_experiment() -> None:
 
 
     cfd_dataset = CFD_Dataset(
-        root="Data_with_P",
+        # root="Data_with_P",
+        root="flow_past_cylinder_domain",
         patch_size = PATCH_SIZE, 
         grid_size  = GRID_SIZE
 
@@ -290,11 +260,11 @@ def run_training_experiment() -> None:
     )
 
     train_re = []
-    for src, _ in train_dataloader:
+    for src, _, _ in train_dataloader:
         train_re.extend([i.item() for i in (src * cfd_dataset.re_std) + cfd_dataset.re_mean])
 
     test_re = []
-    for src, _ in test_dataloader:
+    for src, _, _ in test_dataloader:
         test_re.extend([i.item() for i in (src * cfd_dataset.re_std) + cfd_dataset.re_mean])
 
     
