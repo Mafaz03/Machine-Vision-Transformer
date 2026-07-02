@@ -174,15 +174,15 @@ class CFDLoss(nn.Module):
         
         self.num_freq    = num_freq
 
-    def patches_to_field(self, patches):
+    def patches_to_field(self, patches, channels):
         # patches: (B, num_patches, patch_dim) -> (B, C, H, W)
         B, num_patches, patch_dim = patches.shape
         p = int(num_patches ** 0.5)
         spatial = p * self.patch_size
 
-        patches = patches.view(B, p, p, self.channels, self.patch_size, self.patch_size)
+        patches = patches.view(B, p, p, channels, self.patch_size, self.patch_size)
         patches = patches.permute(0, 3, 1, 4, 2, 5).contiguous()
-        return patches.view(B, self.channels, spatial, spatial)
+        return patches.view(B, channels, spatial, spatial)
 
     def forward(self, pred, target, re_norm, domain_mask):
         
@@ -194,9 +194,9 @@ class CFDLoss(nn.Module):
         # trim to largest complete square that fits
         complete = (int(seq_len ** 0.5)) ** 2  # largest perfect square <= seq_len
         
-        pred_field   = self.patches_to_field(pred[:, :complete, :])
-        target_field = self.patches_to_field(target[:, :complete, :-FOURIER_DIMENSIONS])
-        domain_mask  = self.patches_to_field(domain_mask)
+        pred_field   = self.patches_to_field(pred[:, :complete, :], self.channels)
+        target_field = self.patches_to_field(target[:, :complete, :-FOURIER_DIMENSIONS], self.channels)
+        domain_mask  = self.patches_to_field(domain_mask, 1)
         domain_mask  = domain_mask.repeat(1, self.channels, 1, 1)
 
         
