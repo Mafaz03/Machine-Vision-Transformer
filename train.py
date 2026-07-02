@@ -37,6 +37,7 @@ def run_epoch(
 
             src = src.to(device)
             tgt = tgt.to(device)
+            domain_mask = domain_mask.to(device)
 
             # masks
             src_mask = make_src_mask(src)
