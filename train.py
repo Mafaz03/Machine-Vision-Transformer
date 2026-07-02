@@ -196,7 +196,7 @@ class CFDLoss(nn.Module):
         
         pred_field   = self.patches_to_field(pred[:, :complete, :])
         target_field = self.patches_to_field(target[:, :complete, :-FOURIER_DIMENSIONS])
-        domain_mask  = self.patches_to_mask(domain_mask)
+        domain_mask  = self.patches_to_field(domain_mask)
         domain_mask  = domain_mask.repeat(1, self.channels, 1, 1)
 
         

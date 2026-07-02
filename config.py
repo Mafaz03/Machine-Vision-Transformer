@@ -1,19 +1,37 @@
 import torch
 
 # dataset 
-RE_MEAN = 1191.50125            # with P
-RE_STD  = 739.8270885769103     # with P
 
-RE_MAX  = 2499.1                # with P
+# LID DRIVEN
 
-U_MEAN = 0.00834795
-U_STD  = 0.23277222
+# RE_MEAN = 1191.50125            # with P
+# RE_STD  = 739.8270885769103     # with P
 
-V_MEAN = 0.0002897293
-V_STD  = 0.19554001
+# RE_MAX  = 2499.1                # with P
 
-P_MEAN = -0.03955434
-P_STD  = 0.3204666
+# U_MEAN = 0.00834795
+# U_STD  = 0.23277222
+
+# V_MEAN = 0.0002897293
+# V_STD  = 0.19554001
+
+# P_MEAN = -0.03955434
+# P_STD  = 0.3204666
+
+
+RE_MEAN = 23.0            # with P
+RE_STD  = 12.84523257866513    # with P
+
+RE_MAX  = 45                # with P
+
+U_MEAN = 0.2247134
+U_STD  = 0.17602053
+
+V_MEAN = -0.00048188222
+V_STD  = 0.028765377
+
+P_MEAN = 0.023107985
+P_STD  = 0.03080877
 
 # P_MEAN = 0
 # P_STD  = 0
