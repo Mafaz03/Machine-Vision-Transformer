@@ -47,7 +47,7 @@ C                  = 3 # u, v, P
 TRAIN_SPLIT      = 0.85
 TRAIN_BATCH_SIZE = 8
 TEST_BATCH_SIZE  = 8
-EPOCHS           = 2_000
+EPOCHS           = 1_000
 
 # dimensions
 GRID_SIZE  = 64
