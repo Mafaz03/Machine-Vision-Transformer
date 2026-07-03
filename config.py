@@ -19,10 +19,10 @@ import torch
 # P_STD  = 0.3204666
 
 
-RE_MEAN = 23.0            # with P
-RE_STD  = 12.84523257866513    # with P
+RE_MEAN = 23.0               
+RE_STD  = 12.84523257866513  
 
-RE_MAX  = 45                # with P
+RE_MAX  = 45                 
 
 U_MEAN = 0.2247134
 U_STD  = 0.17602053
@@ -33,8 +33,8 @@ V_STD  = 0.028765377
 P_MEAN = 0.023107985
 P_STD  = 0.03080877
 
-P_MEAN = 0
-P_STD  = 0
+P_MEAN = 0.023107985
+P_STD  = 0.03080877
 
 
 # dimention
