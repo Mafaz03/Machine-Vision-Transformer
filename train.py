@@ -230,17 +230,17 @@ class CFDLoss(nn.Module):
         self.channels    = channels
         
         self.num_freq    = num_freq
-
+ 
     def patches_to_field(self, patches, channels):
         # patches: (B, num_patches, patch_dim) -> (B, C, H, W)
         B, num_patches, patch_dim = patches.shape
         p = int(num_patches ** 0.5)
         spatial = p * self.patch_size
-
+ 
         patches = patches.view(B, p, p, channels, self.patch_size, self.patch_size)
         patches = patches.permute(0, 3, 1, 4, 2, 5).contiguous()
         return patches.view(B, channels, spatial, spatial)
-
+ 
     def forward(self, pred, target, re_norm, domain_mask):
         
         pred = pred[:, :, :]          # removing pos embedding
@@ -255,29 +255,13 @@ class CFDLoss(nn.Module):
         target_field = self.patches_to_field(target[:, :complete, :-FOURIER_DIMENSIONS], self.channels)
         domain_mask  = self.patches_to_field(domain_mask, 1)
         domain_mask  = domain_mask.repeat(1, self.channels, 1, 1)
-
-        
-        # mse_loss  = self.mse(pred_field * domain_mask, target_field * domain_mask)
-
+ 
+ 
         sq = (pred_field - target_field).pow(2)
         sq = sq * domain_mask
         mse_loss = sq.sum() / domain_mask.sum()
-        
-        # re_weight = 1 + torch.exp(-re_norm).mean() # smaller re batch -> more importance
-        # mse_per_sample = ((pred_field - target_field)**2).mean(dim=[1,2,3])
-        # mse_loss       = (mse_per_sample * re_weight.to(pred.device)).mean()
-
-        # mask = mask.float()
-
-        # loss = ((pred - target)**2 * mask).sum() / mask.sum()
-
-        # return (1 * mse_loss * weights.to(pred.device)).mean()# + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
-        # u_loss = self.mse(pred_field[:, 0, :, :], target_field[:,0, :, :])
-        # v_loss = self.mse(pred_field[:, 1, :, :], target_field[:,1, :, :])
-        # if C == 3: p_loss = self.mse(pred_field[:, 2, :, :], target_field[:,2, :, :])
-        # return u_loss + v_loss + 0.01 * p_loss
-
-        return (1 * mse_loss)# + (1 * mag_loss)# + (self.grad_weight * grad_loss) + (self.div_weight * div_loss)
+    
+        return (1 * mse_loss)
     
 def run_training_experiment() -> None:
 
@@ -347,7 +331,7 @@ def run_training_experiment() -> None:
                          N              = N, 
                          num_heads      = NUM_HEADS, 
                          d_ff           = D_FF, 
-                         patch_dim      = PATCH_DIM,
+                         patch_dim      = PATCH_DIM - FOURIER_DIMENSIONS,
                          dropout        = DROPOUT)
     
     transformer = transformer.to(DEVICE)
