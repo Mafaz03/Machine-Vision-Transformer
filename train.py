@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from typing import Optional
 import torch.nn.functional as F
 
-from model import Transformer, make_src_mask, make_tgt_mask
+from model import Transformer, make_src_mask, make_tgt_mask, CFDViT
 
 from tqdm import tqdm
 
@@ -17,9 +17,67 @@ import wandb
 import json
 
 
+# def run_epoch(
+#     data_iter,
+#     model: CFDViT,
+#     loss_fn: nn.Module,
+#     optimizer: Optional[torch.optim.Optimizer] = None,
+#     scheduler=None,
+#     epoch_num: int = 0,
+#     is_train: bool = True,
+#     device: str = "cpu",
+# ) -> float:
+
+#     model.train() if is_train else model.eval()
+#     losses = []
+#     for _ in range(epoch_num):
+#         total_loss = 0
+
+#         for src, tgt, domain_mask in tqdm(data_iter):
+
+#             src = src.to(device)
+#             tgt = tgt.to(device)
+#             domain_mask = domain_mask.to(device)
+
+#             # masks
+#             src_mask = make_src_mask(src)
+#             tgt_mask = make_tgt_mask(tgt)
+
+#             # shift for teacher forcing
+#             B, seq_len, patch_dim = tgt.shape
+#             start_token = torch.zeros(B, 1, patch_dim).to(device)
+#             tgt_input = torch.cat([start_token, tgt[:, :-1, :]], dim=1) # [B,]
+#             tgt_output = tgt
+
+#             # tgt_input = tgt[:, :-1, :]
+#             # tgt_output = tgt[:, 1:, :]
+
+#             tgt_mask = make_tgt_mask(tgt_input)
+
+#             # forward
+#             logits = model(src, tgt_input, src_mask, tgt_mask)
+
+#             # loss
+#             loss = loss_fn(logits, tgt_output, src, domain_mask)
+
+#             if is_train:
+#                 optimizer.zero_grad()
+#                 loss.backward()
+#                 optimizer.step()
+
+#                 if scheduler is not None:
+#                     scheduler.step()
+
+#             # import pdb; pdb.set_trace()
+#             total_loss += loss.item()
+#         losses.append(total_loss / len(data_iter))
+
+#     return sum(losses)/len(losses)
+
+
 def run_epoch(
     data_iter,
-    model: Transformer,
+    model: CFDViT,
     loss_fn: nn.Module,
     optimizer: Optional[torch.optim.Optimizer] = None,
     scheduler=None,
@@ -27,97 +85,95 @@ def run_epoch(
     is_train: bool = True,
     device: str = "cpu",
 ) -> float:
-
+ 
     model.train() if is_train else model.eval()
     losses = []
     for _ in range(epoch_num):
         total_loss = 0
-
+ 
         for src, tgt, domain_mask in tqdm(data_iter):
-
+ 
             src = src.to(device)
             tgt = tgt.to(device)
             domain_mask = domain_mask.to(device)
-
-            # masks
-            src_mask = make_src_mask(src)
-            tgt_mask = make_tgt_mask(tgt)
-
-            # shift for teacher forcing
-            B, seq_len, patch_dim = tgt.shape
-            start_token = torch.zeros(B, 1, patch_dim).to(device)
-            tgt_input = torch.cat([start_token, tgt[:, :-1, :]], dim=1) # [B,]
-            tgt_output = tgt
-
-            # tgt_input = tgt[:, :-1, :]
-            # tgt_output = tgt[:, 1:, :]
-
-            tgt_mask = make_tgt_mask(tgt_input)
-
-            # forward
-            logits = model(src, tgt_input, src_mask, tgt_mask)
-
+ 
+            # Pure ViT: one parallel forward pass predicts every patch at once.
+            # No shifting, no start token, no autoregression -- so there's no
+            # exposure-bias gap between this loss and what you'll see at inference.
+            logits = model(src)
+ 
             # loss
-            loss = loss_fn(logits, tgt_output, src, domain_mask)
-
+            loss = loss_fn(logits, tgt, src, domain_mask)
+ 
             if is_train:
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-
+ 
                 if scheduler is not None:
                     scheduler.step()
-
-            # import pdb; pdb.set_trace()
+ 
             total_loss += loss.item()
         losses.append(total_loss / len(data_iter))
-
+ 
     return sum(losses)/len(losses)
 
 
-def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_freq = 16, device = "cpu"):
-    # coords_tensor: [max_len, 2], where max_len: (grid_size // patch_size)**2
+# def greedy_decode(model, src, src_mask, max_len, patch_dim, coords_tensor, num_freq = 16, device = "cpu"):
+#     # coords_tensor: [max_len, 2], where max_len: (grid_size // patch_size)**2
 
+#     with torch.no_grad():
+#         src = src.to(device)
+#         src_mask = src_mask.to(device)
+
+#         B = src.shape[0]
+#         # encode
+#         ys = torch.zeros(B, 1, patch_dim).to(device)
+#         memory = model.encode(src, src_mask)
+
+#         # loop
+#         for i in tqdm(range(max_len)):
+#             # inject known coords for current position
+#             # coords_so_far = coords_tensor[:ys.shape[1]].unsqueeze(0).expand(B, -1, pos_dim).to(device) # [B, i, pos_dim]
+#             # ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                                    # [B, i, i + pos_dim]
+
+#             start_coord = torch.zeros(1, FOURIER_DIMENSIONS).to(device)
+#             coords_so_far = coords_tensor[:ys.shape[1]-1].to(device)
+#             coords_so_far = torch.cat([start_coord, coords_so_far], dim=0)                              # (seq_len (i), pos_dim)
+#             coords_so_far = coords_so_far.unsqueeze(0).expand(B, -1, FOURIER_DIMENSIONS)                           # [B, i, pos_dim]
+#             ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                                     # [B, i, i + pos_dim]
+
+#             # decoding
+#             tgt_mask = make_tgt_mask(ys_with_coords).to(device)
+#             out = model.decode(
+#                     memory,
+#                     src_mask,
+#                     ys_with_coords,
+#                     tgt_mask
+#                 ) # [B, num_patches, patch_dim]
+
+#             # newest predicted patch
+#             # next_patch = out[:, -1:, :]
+#             next_patch = out[:, -1:, :]  # strip coord dims from output
+
+#             # append
+#             ys = torch.cat([ys, next_patch], dim=1)
+
+#     return ys[:, 1:, :] # (B, num_patches, C*ph*pw) -- no coords
+
+def predict_field(model: CFDViT, src: torch.Tensor, device: str = "cpu") -> torch.Tensor:
+    """
+    Inference for the pure ViT: a single forward pass predicts every patch
+    at once. No loop, no autoregression -- this is the same computation
+    that produces the training/validation loss, so there's no gap between
+    reported loss and what you'll see when you plot the result.
+ 
+    src : (B, 1) normalized Reynolds number
+    returns : (B, num_patches, patch_dim) predicted field, in patch form
+    """
+    model.eval()
     with torch.no_grad():
-        src = src.to(device)
-        src_mask = src_mask.to(device)
-
-        B = src.shape[0]
-        # encode
-        ys = torch.zeros(B, 1, patch_dim).to(device)
-        memory = model.encode(src, src_mask)
-
-        # loop
-        for i in tqdm(range(max_len)):
-            # inject known coords for current position
-            # coords_so_far = coords_tensor[:ys.shape[1]].unsqueeze(0).expand(B, -1, pos_dim).to(device) # [B, i, pos_dim]
-            # ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                                    # [B, i, i + pos_dim]
-
-            start_coord = torch.zeros(1, FOURIER_DIMENSIONS).to(device)
-            coords_so_far = coords_tensor[:ys.shape[1]-1].to(device)
-            coords_so_far = torch.cat([start_coord, coords_so_far], dim=0)                              # (seq_len (i), pos_dim)
-            coords_so_far = coords_so_far.unsqueeze(0).expand(B, -1, FOURIER_DIMENSIONS)                           # [B, i, pos_dim]
-            ys_with_coords = torch.cat([ys, coords_so_far], dim=-1)                                     # [B, i, i + pos_dim]
-
-            # decoding
-            tgt_mask = make_tgt_mask(ys_with_coords).to(device)
-            out = model.decode(
-                    memory,
-                    src_mask,
-                    ys_with_coords,
-                    tgt_mask
-                ) # [B, num_patches, patch_dim]
-
-            # newest predicted patch
-            # next_patch = out[:, -1:, :]
-            next_patch = out[:, -1:, :]  # strip coord dims from output
-
-            # append
-            ys = torch.cat([ys, next_patch], dim=1)
-
-    return ys[:, 1:, :] # (B, num_patches, C*ph*pw) -- no coords
-
-
+        return model(src.to(device))
 
 def save_checkpoint(
     model: Transformer,
@@ -230,8 +286,8 @@ def run_training_experiment() -> None:
 
 
     cfd_dataset = CFD_Dataset(
-        # root="Data_with_P",
-        root="flow_past_cylinder_domain",
+        root="Data_with_P",
+        # root="flow_past_cylinder_domain",
         patch_size = PATCH_SIZE, 
         grid_size  = GRID_SIZE
 

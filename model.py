@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from config import *
+from dataset_cfd import fourier_features
 
 def scaled_dot_product_attention(
     Q: torch.Tensor,
@@ -463,7 +464,86 @@ class Transformer(nn.Module):
         return logits                                                          # [B, num_patches, d_model]
 
     
-
+class CFDViT(nn.Module):
+    """
+    Pure (encoder-only) Vision Transformer for CFD field regression.
+ 
+    Given a single scalar Reynolds number, predicts every patch of the flow
+    field in ONE parallel forward pass -> no autoregression, no teacher
+    forcing, no exposure bias.
+    """
+ 
+    def __init__(
+        self,
+        d_model:    int = 512,
+        N:          int = 6,
+        num_heads:  int = 8,
+        d_ff:       int = 2048,
+        dropout:    float = 0.1,
+        patch_dim:  int = 256,           # content dims only (NOT including coord features)
+        grid_size:  int = GRID_SIZE,
+        patch_size: int = PATCH_SIZE,
+        num_freq:   int = FOURIER_FEATURES,
+    ) -> None:
+        super().__init__()
+ 
+        self.d_model    = d_model
+        self.N          = N
+        self.num_heads  = num_heads
+        self.d_ff       = d_ff
+        self.dropout    = dropout
+        self.patch_dim  = patch_dim
+        self.grid_size  = grid_size
+        self.patch_size = patch_size
+ 
+        # Re -> conditioning vector, added to every patch token
+        self.re_encoder = nn.Sequential(
+            nn.Linear(1, d_model * 2),
+            nn.GELU(),
+            nn.Linear(d_model * 2, d_model * 2),
+            nn.GELU(),
+            nn.Linear(d_model * 2, d_model),
+        )
+ 
+        # fixed positional "queries": one per patch, built from patch center coords.
+        # Identical formula to dataset_cfd.py so patch i here == patch i in the dataset.
+        coords = []
+        patches_per_side = grid_size // patch_size
+        for row in range(patches_per_side):
+            for col in range(patches_per_side):
+                cx = (col + 0.5) / patches_per_side
+                cy = (row + 0.5) / patches_per_side
+                coords.append([cx, cy])
+        coords_tensor = torch.tensor(coords, dtype=torch.float32)                 # (num_patches, 2)
+        coords_tensor = fourier_features(cords=coords_tensor, num_freq=num_freq)  # (num_patches, 2*2*num_freq)
+ 
+        # buffer, not a parameter -> fixed positional queries, never trained directly
+        self.register_buffer("patch_coords", coords_tensor)
+ 
+        self.coord_projection = nn.Linear(coords_tensor.shape[-1], d_model)
+ 
+        encoder_layer = EncoderLayer(d_model=d_model, num_heads=num_heads, d_ff=d_ff, dropout=dropout)
+        self.encoder  = Encoder(layer=encoder_layer, N=N)
+ 
+        self.fc_out = nn.Linear(d_model, patch_dim)  # predicts content only, no coord dims
+ 
+    def forward(self, re: torch.Tensor) -> torch.Tensor:
+        """
+        re : (B, 1) normalized Reynolds number
+        returns : (B, num_patches, patch_dim) predicted field, in patch form
+        """
+        re = re.float()
+        if re.dim() == 1:
+            re = re.unsqueeze(-1)
+ 
+        re_emb    = self.re_encoder(re)                          # (B, d_model)
+        coord_emb = self.coord_projection(self.patch_coords)     # (num_patches, d_model)
+ 
+        tokens = coord_emb.unsqueeze(0) + re_emb.unsqueeze(1)    # (B, num_patches, d_model)
+ 
+        out = self.encoder(tokens, None)                         # full (non-causal) self-attention
+        return self.fc_out(out)                                  # (B, num_patches, patch_dim)
+ 
 
 def load_checkpoint(
     path: str,
@@ -472,15 +552,15 @@ def load_checkpoint(
     scheduler=None,
     device = "cpu"
 ) -> int:
-
+ 
     checkpoint = torch.load(path, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
-
+ 
     if optimizer is not None and "optimizer_state_dict" in checkpoint:
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-
+ 
     if scheduler is not None and "scheduler_state_dict" in checkpoint:
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-
+ 
     return checkpoint["epoch"]
 
