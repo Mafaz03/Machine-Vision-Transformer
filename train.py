@@ -334,13 +334,21 @@ def run_training_experiment() -> None:
     wandb.init(project="Machine Visiosn Transformer")
 
     # 4. Instantiate Transformer with hyperparameters from config
-    transformer = Transformer(
-                              d_model        = D_MODEL, 
-                              N              = N, 
-                              num_heads      = NUM_HEADS, 
-                              d_ff           = D_FF, 
-                              patch_dim      = PATCH_DIM,
-                              dropout        = DROPOUT)
+    # transformer = Transformer(
+    #                           d_model        = D_MODEL, 
+    #                           N              = N, 
+    #                           num_heads      = NUM_HEADS, 
+    #                           d_ff           = D_FF, 
+    #                           patch_dim      = PATCH_DIM,
+    #                           dropout        = DROPOUT)
+    
+    transformer = CFDViT(
+                         d_model        = D_MODEL, 
+                         N              = N, 
+                         num_heads      = NUM_HEADS, 
+                         d_ff           = D_FF, 
+                         patch_dim      = PATCH_DIM,
+                         dropout        = DROPOUT)
     
     transformer = transformer.to(DEVICE)
 
