@@ -8,7 +8,7 @@ from model import Transformer, make_src_mask, make_tgt_mask, CFDViT
 
 from tqdm import tqdm
 
-from config.config import *
+from config import *
 
 from Data import dataset_cfd
 from Data import fourier_features
@@ -171,11 +171,9 @@ def run_training_experiment() -> None:
 
 
     cfd_dataset = dataset_cfd.CFD_Dataset(
-        # root="Data_with_P",
         root="flow_past_cylinder_domain",
         patch_size = PATCH_SIZE, 
         grid_size  = GRID_SIZE
-
     )
 
     # split sizes
@@ -255,3 +253,6 @@ def run_training_experiment() -> None:
             save_checkpoint(transformer, optimizer, scheduler, epoch)
     
     return transformer
+
+if __name__ == "__main__":
+    run_training_experiment()

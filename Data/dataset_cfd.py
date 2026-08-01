@@ -72,8 +72,7 @@ class CFD_Dataset(Dataset):
             self.mask_list.append(mask)
 
             # stack into (C, H, W) with C=3 (u, v, P channels)
-            if C == 3: uv_grid = np.stack([u_grid, v_grid, P_grid], axis=0).astype(np.float32)  # (3, 64, 64)
-            if C == 2: uv_grid = np.stack([u_grid, v_grid], axis=0).astype(np.float32)  # (3, 64, 64)
+            uv_grid = np.stack([u_grid, v_grid, P_grid], axis=0).astype(np.float32)  # (3, 64, 64)
 
         
             self.u_mean_list.append(uv_grid[0].mean())
@@ -93,9 +92,7 @@ class CFD_Dataset(Dataset):
         print(np.sum(self.mask_list[0] == 0))
         all_u = np.concatenate([g[0][m].flatten() for g, m in zip(self.patches_list, self.mask_list)])
         all_v = np.concatenate([g[1][m].flatten() for g, m in zip(self.patches_list, self.mask_list) ])
-
-        if C == 3:
-            all_P = np.concatenate([g[2][m == 1].flatten() for g, m in zip(self.patches_list, self.mask_list) ])
+        all_P = np.concatenate([g[2][m == 1].flatten() for g, m in zip(self.patches_list, self.mask_list) ])
 
         self.u_mean, self.u_std = all_u.mean(), all_u.std()
         self.v_mean, self.v_std = all_v.mean(), all_v.std()
@@ -121,7 +118,7 @@ class CFD_Dataset(Dataset):
         for i, (uv_grid, mask) in enumerate(zip(self.patches_list, self.mask_list)):
             uv_grid[0] = (uv_grid[0] - self.u_mean) / (self.u_std + 1e-8)
             uv_grid[1] = (uv_grid[1] - self.v_mean) / (self.v_std + 1e-8)
-            if C == 3: uv_grid[2] = (uv_grid[2] - self.P_mean) / (self.P_std + 1e-8)
+            uv_grid[2] = (uv_grid[2] - self.P_mean) / (self.P_std + 1e-8)
 
             uv_tensor = torch.tensor(uv_grid)
             
@@ -158,7 +155,8 @@ class CFD_Dataset(Dataset):
 
 if "__main__" == __name__:
     # cfd_dataset = CFD_Dataset(root = "Data_with_P", patch_size = 16, grid_size = 64)
-    cfd_dataset = CFD_Dataset(root = "Backward_Facing_Step_domain", patch_size = 16, grid_size = 64)
+    
+    cfd_dataset = CFD_Dataset(root = "Data/Problems/flow_past_cylinder_domain", patch_size = 16, grid_size = 64)
     dataloader  = DataLoader(cfd_dataset, batch_size = 1, shuffle = True)
 
     print("re mean: ", cfd_dataset.re_mean)
