@@ -40,7 +40,7 @@ class CFD_Dataset(Dataset):
         if C == 3: self.P_std_list  = []
 
         
-        files = os.listdir(root)
+        files = os.listdir(f"{ROOT}/Data/Problems{root}")
 
         # regular grid to interpolate onto
         lin = np.linspace(0, 1, grid_size)
@@ -87,9 +87,6 @@ class CFD_Dataset(Dataset):
             self.patches_list.append(uv_grid)
 
         # Computing global stats from raw grids
-        print(np.unique(self.mask_list[0]))
-        print(np.sum(self.mask_list[0] == 1))
-        print(np.sum(self.mask_list[0] == 0))
         all_u = np.concatenate([g[0][m].flatten() for g, m in zip(self.patches_list, self.mask_list)])
         all_v = np.concatenate([g[1][m].flatten() for g, m in zip(self.patches_list, self.mask_list) ])
         all_P = np.concatenate([g[2][m == 1].flatten() for g, m in zip(self.patches_list, self.mask_list) ])

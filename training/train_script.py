@@ -17,7 +17,6 @@ from model.lr_scheduler import *
 
 import json
 
-
 def run_epoch(
     data_iter,
     model: CFDViT,
@@ -74,9 +73,6 @@ def predict_field(model: CFDViT, src: torch.Tensor, device: str = "cpu") -> torc
     model.eval()
     with torch.no_grad():
         return model(src.to(device))
-
-from pathlib import Path
-ROOT = Path(__file__).resolve().parent.parent
 
 def save_checkpoint(
     model: Transformer,

@@ -1,4 +1,5 @@
 import torch
+from pathlib import Path
 
 # dataset 
 
@@ -68,3 +69,6 @@ SAVE_EVERY = 20
 
 # save 
 MODEL_NAME = "flow_past_cylinder.pt"
+
+# root files
+ROOT = Path(__file__).resolve().parent.parent
