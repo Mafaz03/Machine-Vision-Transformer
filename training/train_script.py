@@ -15,7 +15,6 @@ from Data import fourier_features
 
 from model.lr_scheduler import *
 
-import wandb
 import json
 
 
@@ -76,13 +75,17 @@ def predict_field(model: CFDViT, src: torch.Tensor, device: str = "cpu") -> torc
     with torch.no_grad():
         return model(src.to(device))
 
+from pathlib import Path
+ROOT = Path(__file__).resolve().parent.parent
+
 def save_checkpoint(
     model: Transformer,
     optimizer: torch.optim.Optimizer,
     scheduler,
     epoch: int,
-    path: str = "checkpoint.pt",
+    path: str = f"{ROOT}/model_checkpoints/{MODEL_NAME}",
 ) -> None:
+    
     torch.save(
         {
             "epoch"               : epoch,
@@ -213,9 +216,6 @@ def run_training_experiment() -> None:
         json.dump(data, file)
 
 
-    # 1. Init W&B
-    wandb.init(project="Machine Visiosn Transformer")
-
     # 4. Instantiate Transformer with hyperparameters from config    
     transformer = CFDViT(
                          d_model        = D_MODEL, 
@@ -245,14 +245,11 @@ def run_training_experiment() -> None:
         transformer.eval()
         test_loss = run_epoch(test_dataloader, transformer, loss_fn,
                         optimizer, scheduler, 1, is_train=False, device=DEVICE)
-        wandb.log({'epoch': epoch, 'train_loss': train_loss, 'test_loss': test_loss})
-        print(f"EPOCH: {epoch} => Train loss: {train_loss:.4f} | Test loss: {test_loss:.4f}")
+        
+        print(f"[ViT] Epoch {epoch+1}/{EPOCHS}  train_loss={train_loss:.6f} test_loss={test_loss:.6f}")
         
         if (epoch % SAVE_EVERY == 0) or (epoch == EPOCHS-1):
-            print(f"Saving at epoch: {epoch}")
+            # print(f"Saving at epoch: {epoch}")
             save_checkpoint(transformer, optimizer, scheduler, epoch)
     
     return transformer
-
-if __name__ == "__main__":
-    run_training_experiment()
