@@ -7,3 +7,4 @@ __pycache__/*
 wandb
 Data_Re
 simulation_data_with_P.txt
+.vscode
