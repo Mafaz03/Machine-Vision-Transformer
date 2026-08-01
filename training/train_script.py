@@ -33,7 +33,7 @@ def run_epoch(
     for _ in range(epoch_num):
         total_loss = 0
  
-        for src, tgt, domain_mask in tqdm(data_iter):
+        for src, tgt, domain_mask in data_iter:
  
             src = src.to(device)
             tgt = tgt.to(device)
