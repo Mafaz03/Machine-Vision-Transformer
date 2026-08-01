@@ -24,8 +24,6 @@ class CFD_Dataset(Dataset):
     def __init__(self, root: str = "Data", patch_size: int = 8, grid_size = 64):
         super().__init__()
 
-        root = pathlib.Path(root)
-
         self.re_list      = []
         self.text_list    = []
         self.patches_list = []
@@ -52,7 +50,7 @@ class CFD_Dataset(Dataset):
 
             # extract Re from filename e.g. "Re_100.csv"
             re_value = float(file.split("Re_")[-1].replace(".csv", ""))
-            df = pd.read_csv(pathlib.Path(root) / file, index_col=0)
+            df = pd.read_csv(f"{ROOT}/Data/Problems/{root}/{file}", index_col=0)
 
             n = 64
 
