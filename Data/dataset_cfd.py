@@ -40,7 +40,7 @@ class CFD_Dataset(Dataset):
         if C == 3: self.P_std_list  = []
 
         
-        files = os.listdir(f"{ROOT}/Data/Problems{root}")
+        files = os.listdir(f"{ROOT}/Data/Problems/{root}")
 
         # regular grid to interpolate onto
         lin = np.linspace(0, 1, grid_size)
