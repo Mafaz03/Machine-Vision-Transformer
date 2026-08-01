@@ -2,6 +2,7 @@ import torch
 from pathlib import Path
 
 # dataset 
+DATASET = "flow_past_cylinder_domain"
 
 # LID DRIVEN
 

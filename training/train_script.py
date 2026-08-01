@@ -170,7 +170,7 @@ def run_training_experiment() -> None:
 
 
     cfd_dataset = dataset_cfd.CFD_Dataset(
-        root="flow_past_cylinder_domain",
+        root       = DATASET,
         patch_size = PATCH_SIZE, 
         grid_size  = GRID_SIZE
     )
