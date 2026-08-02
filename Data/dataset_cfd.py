@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, Dataset
 import pathlib
-import cv2
 import pandas as pd
 from scipy.interpolate import griddata
 import os
@@ -145,7 +144,7 @@ class CFD_Dataset(Dataset):
         re_norm = (re_value - self.re_mean) / self.re_std
         re_tensor = torch.tensor([re_norm], dtype=torch.float32)
 
-        return (re_tensor, self.patches_list[index], ~self.mask_list[index])
+        return (re_tensor, self.patches_list[index], self.mask_list[index])
 
 
 if "__main__" == __name__:

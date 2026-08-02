@@ -69,7 +69,7 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 SAVE_EVERY = 20
 
 # save 
-MODEL_NAME = "flow_past_cylinder.pt"
+MODEL_NAME = f"{DATASET.replace('_domain', '')}.pt"
 
 # root files
 ROOT = Path(__file__).resolve().parent.parent
