@@ -37,7 +37,7 @@ class CFD_Dataset(Dataset):
         if C == 3: self.P_std_list  = []
 
         
-        files = os.listdir(f"{ROOT}/Data/Problems/{root}")
+        files = os.listdir(f"{ROOT}/{root}")
 
         # regular grid to interpolate onto
         lin = np.linspace(0, 1, grid_size)
@@ -49,7 +49,7 @@ class CFD_Dataset(Dataset):
 
             # extract Re from filename e.g. "Re_100.csv"
             re_value = float(file.split("Re_")[-1].replace(".csv", ""))
-            df = pd.read_csv(f"{ROOT}/Data/Problems/{root}/{file}", index_col=0)
+            df = pd.read_csv(f"{ROOT}/{root}/{file}", index_col=0)
 
             n = 64
 
@@ -150,7 +150,7 @@ class CFD_Dataset(Dataset):
 if "__main__" == __name__:
     # cfd_dataset = CFD_Dataset(root = "Data_with_P", patch_size = 16, grid_size = 64)
     
-    cfd_dataset = CFD_Dataset(root = "Data/Problems/flow_past_cylinder_domain", patch_size = 16, grid_size = 64)
+    cfd_dataset = CFD_Dataset(root = "Data/Problems/Lid_Driven_domain", patch_size = 16, grid_size = 64)
     dataloader  = DataLoader(cfd_dataset, batch_size = 1, shuffle = True)
 
     print("re mean: ", cfd_dataset.re_mean)
@@ -174,6 +174,7 @@ if "__main__" == __name__:
     
     patches = patches.squeeze(0) # remove B for now
     mask = mask.squeeze(0) # remove B for now
+    mask = ~mask
     re = re.squeeze(0)           # remove B for now
 
     unrolled = patches.view(64//16, 64//16, C, 16, 16)              # (patch_row, patch_col, C, patch_h, patch_w)
