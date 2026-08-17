@@ -1,1 +1,1 @@
-![Machine Vision Transformer](./assets/Machine%20Vision%20Transformer_1.png)
+![Machine Vision Transformer](./assets/Machine%20Vision%20Transformer_2.png)
