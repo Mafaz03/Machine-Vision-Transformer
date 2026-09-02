@@ -42,7 +42,7 @@ def run_epoch(
             # Pure ViT: one parallel forward pass predicts every patch at once.
             # No shifting, no start token, no autoregression -- so there's no
             # exposure-bias gap between this loss and what you'll see at inference.
-            logits = model(src)
+            logits = model(src, domain_mask)
  
             # loss
             loss = loss_fn(logits, tgt, src, domain_mask)
@@ -60,19 +60,21 @@ def run_epoch(
  
     return sum(losses)/len(losses)
 
-def predict_field(model: CFDViT, src: torch.Tensor, device: str = "cpu") -> torch.Tensor:
+def predict_field(model: CFDViT, src: torch.Tensor, mask: Optional[torch.Tensor] = None, device: str = "cpu") -> torch.Tensor:
     """
     Inference for the pure ViT: a single forward pass predicts every patch
     at once. No loop, no autoregression -- this is the same computation
     that produces the training/validation loss, so there's no gap between
     reported loss and what you'll see when you plot the result.
  
-    src : (B, 1) normalized Reynolds number
+    src  : (B, 1) normalized Reynolds number
+    mask : (B, num_patches, patch_size*patch_size) domain mask per patch, optional
     returns : (B, num_patches, patch_dim) predicted field, in patch form
     """
     model.eval()
     with torch.no_grad():
-        return model(src.to(device))
+        mask = mask.to(device) if mask is not None else None
+        return model(src.to(device), mask)
 
 def save_checkpoint(
     model: Transformer,

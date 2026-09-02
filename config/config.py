@@ -5,19 +5,19 @@ from pathlib import Path
 DATASET = "Lid_Driven_domain"
 
 ## LID DRIVEN
-RE_MEAN = 1191.50125            
-RE_STD  = 739.8270885769103     
+# RE_MEAN = 1191.50125            
+# RE_STD  = 739.8270885769103     
 
-RE_MAX  = 2499.1                
+# RE_MAX  = 2499.1                
 
-U_MEAN = 0.00834795
-U_STD  = 0.23277222
+# U_MEAN = 0.00834795
+# U_STD  = 0.23277222
 
-V_MEAN = 0.0002897293
-V_STD  = 0.19554001
+# V_MEAN = 0.0002897293
+# V_STD  = 0.19554001
 
-P_MEAN = -0.03955434
-P_STD  = 0.3204666
+# P_MEAN = -0.03955434
+# P_STD  = 0.3204666
 
 ## FLOW PAST CYLINDER
 # RE_MEAN = 23.0               
@@ -36,19 +36,19 @@ P_STD  = 0.3204666
 
 
 ## BACKWARD FACING STEP
-# RE_MEAN = 251.0
-# RE_STD  = 144.33641259224922
+RE_MEAN = 251.0
+RE_STD  = 144.33641259224922
 
-# RE_MAX  = 500               
+RE_MAX  = 500               
 
-# U_MEAN = 0.005317458
-# U_STD  = 0.0077847615
+U_MEAN = 0.005317458
+U_STD  = 0.0077847615
 
-# V_MEAN = 0.00018778603
-# V_STD  = 0.0005330455
+V_MEAN = 0.00018778603
+V_STD  = 0.0005330455
 
-# P_MEAN = 0.7710041
-# P_STD  = 0.41309953
+P_MEAN = 0.7710041
+P_STD  = 0.41309953
 
 
 
@@ -69,7 +69,7 @@ GRID_SIZE  = 64
 PATCH_SIZE = 8
 PATCH_DIM  = (PATCH_SIZE * PATCH_SIZE * C) + FOURIER_DIMENSIONS # +64 because positional embedding was done in the dataset itself
                                                                 # tgt: (patch_row * patch_col, C * patch_h * patch_w + (2 * 2 * num_freq))
-D_MODEL    = 512
+D_MODEL    = 768
 
 # parameters
 N         = 6 # 6

@@ -521,15 +521,28 @@ class CFDViT(nn.Module):
         self.register_buffer("patch_coords", coords_tensor)
  
         self.coord_projection = nn.Linear(coords_tensor.shape[-1], d_model)
+
+        # per-patch domain mask -> conditioning vector, added to every patch token.
+        # domain_mask patches come in as (B, num_patches, patch_size*patch_size),
+        # same flattening used for mask_list in dataset_cfd.py.
+        self.mask_projection = nn.Sequential(
+            nn.Linear(patch_size * patch_size, d_model),
+            nn.GELU(),
+            nn.Linear(d_model, d_model)
+            )
  
         encoder_layer = EncoderLayer(d_model=d_model, num_heads=num_heads, d_ff=d_ff, dropout=dropout)
         self.encoder  = Encoder(layer=encoder_layer, N=N)
  
         self.fc_out = nn.Linear(d_model, patch_dim)  # predicts content only, no coord dims
  
-    def forward(self, re: torch.Tensor) -> torch.Tensor:
+    def forward(self, re: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
-        re : (B, 1) normalized Reynolds number
+        re   : (B, 1) normalized Reynolds number
+        mask : (B, num_patches, patch_size*patch_size) domain mask per patch, optional.
+               1 = valid/fluid pixel, 0 = solid/masked-out pixel (same convention as
+               the domain_mask used in CFDLoss). When provided, lets the model know
+               the domain geometry instead of inferring it purely from Re.
         returns : (B, num_patches, patch_dim) predicted field, in patch form
         """
         re = re.float()
@@ -540,6 +553,10 @@ class CFDViT(nn.Module):
         coord_emb = self.coord_projection(self.patch_coords)     # (num_patches, d_model)
  
         tokens = coord_emb.unsqueeze(0) + re_emb.unsqueeze(1)    # (B, num_patches, d_model)
+
+        if mask is not None:
+            mask_emb = self.mask_projection(mask.float())        # (B, num_patches, d_model)
+            tokens = tokens + mask_emb
  
         out = self.encoder(tokens, None)                         # full (non-causal) self-attention
         return self.fc_out(out)                                  # (B, num_patches, patch_dim)
@@ -563,4 +580,3 @@ def load_checkpoint(
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
  
     return checkpoint["epoch"]
-
